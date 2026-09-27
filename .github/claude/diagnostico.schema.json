@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tipo", "alcance", "confianza", "resumen", "causa", "evidencia", "plan", "archivos_a_tocar", "cambia_contrato", "requiere_adr", "pruebas", "riesgos", "preguntas"],
+  "properties": {
+    "tipo": {"enum": ["error", "mejora", "pregunta", "falta-info", "no-reproducible", "duplicado"], "description": "Que es el issue"},
+    "alcance": {"enum": ["evidente", "estructural", "ninguno"], "description": "Cuanto hay que cambiar; ver .github/claude/evaluar.md"},
+    "confianza": {"enum": ["alta", "media", "baja"], "description": "alta solo si viste en el codigo la causa exacta"},
+    "resumen": {"type": "string", "maxLength": 600},
+    "causa": {"type": "string", "maxLength": 3000},
+    "evidencia": {
+      "type": "array", "maxItems": 15,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["archivo", "lineas", "observacion"],
+        "properties": {
+          "archivo": {"type": "string", "description": "ruta relativa al repo"},
+          "lineas": {"type": "string", "maxLength": 500},
+          "observacion": {"type": "string", "maxLength": 500}
+        }
+      }
+    },
+    "plan": {"type": "array", "maxItems": 20, "items": {"type": "string", "maxLength": 500}},
+    "archivos_a_tocar": {"type": "array", "maxItems": 60, "items": {"type": "string", "maxLength": 300}},
+    "cambia_contrato": {"type": "boolean"},
+    "requiere_adr": {"type": "boolean"},
+    "pruebas": {"type": "array", "maxItems": 15, "items": {"type": "string", "maxLength": 500}},
+    "riesgos": {"type": "array", "maxItems": 15, "items": {"type": "string", "maxLength": 500}},
+    "preguntas": {"type": "array", "maxItems": 15, "items": {"type": "string", "maxLength": 500}}
+  }
+}

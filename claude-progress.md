@@ -238,7 +238,39 @@ salto minor"), la sección del CHANGELOG se reescribió a mano desde el borrador
 `release-notes.sh`, y `bump-version.sh 0.4.0` se corrió sin tocar, con un `sed`
 de envoltorio en el `PATH` que traduce el `-i ''` de BSD al de GNU.
 
+## Claude atiende issues (`docs/adr/0011`)
+
+Pedido del autor: que Claude revise los issues con su suscripción, que la
+corrida espere aprobación, que primero evalúe, que un error evidente termine en
+PR, que uno estructural deje el diagnóstico y pida confirmación, y que todo se
+pueda auditar sin exponer nunca variables de entorno.
+
+Diseño, verificado contra `action.yml` y `docs/security.md` de
+`claude-code-action@v1`: Claude solo produce datos (un JSON de diagnóstico y
+ediciones); `scripts/issue-harness.py` decide la ruta, revisa el parche y
+escanea todo lo que sale. Tres hechos de la action lo forzaron: solo corre para
+usuarios con escritura salvo `allowed_non_write_users`, su token de app se
+revoca al terminar, y los artefactos de un repo público son públicos.
+
+```
+actionlint claude-issues.yml       -> limpio
+./scripts/test-issue-harness.sh    -> 43 tests OK (ruta, guardia, secretos, esquemas)
+simulacion local, salida falsa de Claude:
+  evaluar   -> ruta=corregir, comentario sin la mencion viva ni el comentario HTML
+  guardia   -> ok; con un workflow editado -> rechazada, incluso en confirmar
+  probar    -> make test-windows, harness, integridad y hooks en verde sobre el parche
+  secretos  -> token filtrado en el parche: FALLA, y el reporte no repite el valor
+```
+
+⚠️ 2026-09-27: **nunca corrió en GitHub.** Falta la configuración del autor
+(dos environments con el secreto y el permiso de Actions para abrir PRs) y una
+corrida real de cada tipo de issue. F6 en `EXECUTION-PLAN.md`.
+
 ## Próximo paso
+
+**Harness de issues (F6).** Configurar según
+`docs/reference/claude-issues.md` §Configuración y probar un issue de cada tipo
+(§Probarlo). Anotar aquí qué pasó con las tres dudas de §Sin verificar.
 
 **Renombrado (F5 en `EXECUTION-PLAN.md`).** Hechos: repo renombrado, PR #17
 mergeado con CI en verde, versión `0.4.0` preparada. Falta, en este orden:
@@ -283,6 +315,7 @@ Windows real (R9), y marcar el job `port de Windows` como check obligatorio (B13
 | 2026-09-17 | Primer release: `v0.2.0`. README reescrito. Reglas de tags con `check-tag.sh`, `next-version`, `release-notes`, firma SSH y ruleset en GitHub (`docs/reference/tags.md`) |
 | 2026-09-17 | Reglas de tags obligatorias en `CLAUDE.md` para cualquier agente de IA (PR #7). Primer tag bajo las reglas (`v0.2.1`) reveló un bug real de CI con tags anotados; corregido y publicado como `v0.2.2` (PR #9), con el ciclo de `lucy update` probado de punta a punta contra el release real |
 | 2026-09-27 | Renombrado de LucyGlow a MascoTuscan, comando `mascotuscan` (`docs/adr/0010`). Migración encadenada `~/.lucy`/`~/.cmux-pet`, y reemplazo de los enganches viejos en el zshrc y en los hooks de Claude Code |
+| 2026-09-27 | Harness de issues: Claude evalúa con aprobación, un error evidente termina en PR, uno estructural en diagnóstico con confirmación; reglas fijas y escaneo de secretos en `scripts/issue-harness.py` (`docs/adr/0011`). Sin correr aún en GitHub |
 
 ## Trampas que ya costaron tiempo
 

@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash",
+      "WebFetch",
+      "WebSearch",
+      "Read(//proc/**)",
+      "Read(//sys/**)",
+      "Read(//etc/**)",
+      "Read(//tmp/**)",
+      "Read(//home/runner/.*/**)",
+      "Read(//home/runner/work/_temp/**)",
+      "Read(//home/runner/work/_actions/**)",
+      "Read(./.git/**)",
+      "Edit(.github/**)",
+      "Edit(.claude/**)",
+      "Edit(**/CLAUDE.md)",
+      "Edit(**/CLAUDE.local.md)",
+      "Edit(**/AGENTS.md)",
+      "Edit(VERSION)",
+      "Edit(CHANGELOG.md)",
+      "Edit(scripts/issue-harness.py)",
+      "Edit(scripts/tests/test_issue_harness.py)",
+      "Edit(scripts/bump-version.sh)",
+      "Edit(scripts/check-tag.sh)",
+      "Edit(scripts/changelog-section.sh)",
+      "Edit(claude-entrada/**)",
+      "Edit(claude-salida/**)"
+    ]
+  }
+}
