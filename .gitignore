@@ -5,7 +5,7 @@ Package.resolved
 *.xcodeproj
 
 # Salida del modo --render (anclado a la raiz: sin la barra inicial tambien
-# excluiria Sources/LucyGlowKit/Render/, que es codigo)
+# excluiria Sources/MascoTuscanKit/Render/, que es codigo)
 /render/
 
 # macOS

@@ -2,7 +2,7 @@
 # Verifica que el repositorio contenga todo lo que el build necesita.
 #
 # Existe por un bug real: el patron `render/` del .gitignore excluyo tambien
-# `Sources/LucyGlowKit/Render/`, asi que RenderMode.swift nunca entro al repo. En
+# `Sources/MascoTuscanKit/Render/`, asi que RenderMode.swift nunca entro al repo. En
 # local compilaba (el archivo estaba en disco) y en CI fallaba. Un clon limpio es
 # la unica prueba honesta de que el repo esta completo.
 set -euo pipefail
@@ -61,8 +61,8 @@ fi
 # VERSION al compilar sin plugins). Si divergen, la mascota de una plataforma
 # creeria que hay una actualizacion que ya tiene, o al reves.
 v_file="$(tr -d '[:space:]' < VERSION)"
-v_swift="$(sed -n 's/^public let lucyGlowVersion = "\(.*\)"$/\1/p' Sources/LucyGlowKit/Support/Paths.swift)"
-v_py="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' windows/lucy_win/__init__.py)"
+v_swift="$(sed -n 's/^public let mascoTuscanVersion = "\(.*\)"$/\1/p' Sources/MascoTuscanKit/Support/Paths.swift)"
+v_py="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' windows/mascotuscan_win/__init__.py)"
 v_log="$(grep -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | head -1 | tr -d '#[] ')"
 if [[ "$v_file" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$v_file" == "$v_swift" && "$v_file" == "$v_py" && "$v_file" == "$v_log" ]]; then
   printf '  ok   version %s en VERSION, Paths.swift, __init__.py y CHANGELOG\n' "$v_file"

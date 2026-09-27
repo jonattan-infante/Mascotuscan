@@ -11,8 +11,8 @@ Para cualquier otro cambio, usa la segunda y borra la primera.
 
 Antes de abrir el PR:
 
-- [ ] `lucy validate ./mi-mascota` pasa sin fallas
-- [ ] La instalé y la usé un rato: `lucy install ./mi-mascota --use`
+- [ ] `mascotuscan validate ./mi-mascota` pasa sin fallas
+- [ ] La instalé y la usé un rato: `mascotuscan install ./mi-mascota --use`
 - [ ] El `source` del índice es público y se clona sin credenciales
 - [ ] La `version` del índice coincide con la del `pet.json`
 - [ ] El arte es mío o tengo permiso, y la licencia declarada lo refleja

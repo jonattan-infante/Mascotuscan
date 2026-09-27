@@ -78,7 +78,7 @@ Los tres vectoriales se dibujan con Core Graphics y se tiñen con tus `accent`:
 no pesan nada y no involucran arte de nadie. Para verlos:
 
 ```bash
-lucy renderers
+mascotuscan renderers
 ```
 
 Con `sprites`, los formatos aceptados son `gif` (se anima solo), `png`, `webp`,
@@ -141,7 +141,7 @@ con `phrases.json` funciona sin conexión y sin Claude Code**.
   "working":      ["*whirr* {agent} lleva {time}{where} {doing}."],
   "portUp":       ["*blip* el puerto {port} está escuchando{where}."],
   "portDown":     ["*blip* el puerto {port} se cerró{where}."],
-  "updateAvailable": ["*bip* hay una versión nueva de LucyGlow: {version}."]
+  "updateAvailable": ["*bip* hay una versión nueva de MascoTuscan: {version}."]
 }
 ```
 
@@ -170,7 +170,7 @@ Dos reglas que cuestan errores si se olvidan:
 
 ## Reglas de validación
 
-`lucy validate <ruta>` comprueba todo esto y explica cada fallo:
+`mascotuscan validate <ruta>` comprueba todo esto y explica cada fallo:
 
 - `schemaVersion` es 1.
 - `id` casa con `[a-z0-9-]{2,32}` y no choca con un pack ya instalado de otro autor.
@@ -190,7 +190,7 @@ Dos reglas que cuestan errores si se olvidan:
 ## Dónde vive lo instalado
 
 ```
-~/.lucy/
+~/.mascotuscan/
 ├── pets/
 │   ├── astro/            un pack instalado
 │   │   ├── pet.json
@@ -225,7 +225,7 @@ No hay servidor.
       "version": "1.0.0",
       "language": "es",
       "renderer": "vector:droid",
-      "source": "https://github.com/jonattan-infante/lucyglow.git",
+      "source": "https://github.com/jonattan-infante/mascotuscan.git",
       "path": "pets/astro",
       "tags": ["droide", "vector", "sin-arte"]
     }

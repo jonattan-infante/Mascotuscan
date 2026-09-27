@@ -1,7 +1,7 @@
-# Instalador de lucy para Windows.
+# Instalador de mascotuscan para Windows.
 #
 # Registra los hooks de Claude Code que alimentan a la mascota y prepara
-# %USERPROFILE%\.lucy. Idempotente: correrlo dos veces no duplica nada.
+# %USERPROFILE%\.mascotuscan. Idempotente: correrlo dos veces no duplica nada.
 #
 #   python install.py            # instalar los hooks en ~/.claude/settings.json
 #   python install.py --uninstall
@@ -10,18 +10,19 @@
 #
 # El instalador va en Python (no en PowerShell) porque Python ya es requisito de
 # la mascota y el merge de settings.json es mas seguro asi. El hook en si
-# (lucy-hook.ps1) si es PowerShell: lo ejecuta Claude Code en cada evento.
+# (mascotuscan-hook.ps1) si es PowerShell: lo ejecuta Claude Code en cada evento.
 
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from mascotuscan_win import paths
+
 HERE = Path(__file__).resolve().parent
-HOOK = HERE / "hooks" / "lucy-hook.ps1"
+HOOK = HERE / "hooks" / "mascotuscan-hook.ps1"
 
 # Todos los eventos que la mascota entiende. Los de herramienta llevan matcher "".
 TOOL_EVENTS = ["PreToolUse", "PostToolUse"]
@@ -29,12 +30,20 @@ PLAIN_EVENTS = ["SessionStart", "SessionEnd", "UserPromptSubmit",
                 "Notification", "Stop", "SubagentStop"]
 ALL_EVENTS = TOOL_EVENTS + PLAIN_EVENTS
 
-MARK = "lucy-hook.ps1"   # firma para reconocer nuestros hooks al desinstalar
+MARK = "mascotuscan-hook.ps1"   # firma para reconocer nuestros hooks al desinstalar
+# El hook se llamo asi con los nombres anteriores del producto. Una instalacion
+# vieja los dejo registrados apuntando a un archivo que ya no existe: se quitan
+# igual que los actuales, y nunca se registran de nuevo.
+LEGACY_MARKS = ("lucy-hook.ps1", "cmux-pet-hook.ps1")
 
 
 def hook_command(hook_path: Path) -> str:
     return ('powershell -NoProfile -ExecutionPolicy Bypass -File '
             f'"{hook_path}"')
+
+
+def _is_ours(command: str) -> bool:
+    return any(m in command for m in (MARK, *LEGACY_MARKS))
 
 
 def _has_our_hook(entries) -> bool:
@@ -48,7 +57,7 @@ def _has_our_hook(entries) -> bool:
 def _strip_our_hooks(entries):
     out = []
     for entry in entries or []:
-        kept = [h for h in entry.get("hooks", []) if MARK not in str(h.get("command", ""))]
+        kept = [h for h in entry.get("hooks", []) if not _is_ours(str(h.get("command", "")))]
         if kept:
             e = dict(entry)
             e["hooks"] = kept
@@ -93,8 +102,8 @@ def update_checkout(repo_root: Path, tag: str) -> int:
     asi que esto ES la actualizacion en Windows. No toca un arbol con cambios
     locales: pisarle trabajo a alguien es peor que no actualizar. """
     if not (repo_root / ".git").exists():
-        print("este lucy no es un clon de git, asi que no puedo moverlo solo.")
-        print(f"  descarga la version: https://github.com/jonattan-infante/lucyglow/releases/tag/{tag}")
+        print("este mascotuscan no es un clon de git, asi que no puedo moverlo solo.")
+        print(f"  descarga la version: https://github.com/jonattan-infante/mascotuscan/releases/tag/{tag}")
         return 1
     dirty = _git("status", "--porcelain", cwd=repo_root)
     if dirty.returncode != 0:
@@ -116,22 +125,33 @@ def update_checkout(repo_root: Path, tag: str) -> int:
     return 0
 
 
-def stop_running_pet() -> None:
+def stop_running_pet(home: Path = paths.HOME) -> None:
     """ La mascota vieja sigue en memoria con el codigo viejo. Se le pide salir
     por su pid; el hook SessionStart arranca la nueva en la proxima sesion. """
-    pid_file = Path(os.path.expanduser("~")) / ".lucy" / "pet.pid"
+    pid_file = home / "pet.pid"
     try:
         pid = int(pid_file.read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
         return
     try:
         if os.name == "nt":
+            # taskkill /F no le deja a la mascota borrar su pid.pid, asi que uno
+            # viejo es comun y Windows reusa los pid: solo si es un python.
+            if not _is_python_process(pid):
+                return
             subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
         else:
             os.kill(pid, 15)
+        pid_file.unlink(missing_ok=True)
         print("mascota anterior detenida; arranca sola en tu proxima sesion de Claude Code")
     except OSError:
         pass
+
+
+def _is_python_process(pid: int) -> bool:
+    out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+                         capture_output=True, text=True).stdout
+    return out.strip().strip('"').lower().startswith("python")
 
 
 def default_settings_path() -> Path:
@@ -150,7 +170,7 @@ def load_settings(path: Path) -> dict:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Instala los hooks de lucy para Claude Code")
+    ap = argparse.ArgumentParser(description="Instala los hooks de mascotuscan para Claude Code")
     ap.add_argument("--uninstall", action="store_true")
     ap.add_argument("--update", action="store_true",
                     help="mover este checkout a la ultima version publicada")
@@ -163,10 +183,10 @@ def main(argv=None) -> int:
 
     if args.update:
         sys.path.insert(0, str(HERE))
-        from lucy_win import update as updatemod, __version__
+        from mascotuscan_win import update as updatemod, __version__
         current = updatemod.parse(__version__)
         latest, problem = updatemod.fetch_latest()
-        print(f"lucy {__version__}")
+        print(f"mascotuscan {__version__}")
         if problem:
             print(f"  {problem}")
             return 1
@@ -189,27 +209,30 @@ def main(argv=None) -> int:
     settings_path.write_text(json.dumps(updated, indent=2, ensure_ascii=False),
                              encoding="utf-8")
 
-    # Preparar el estado en disco de la mascota. El producto se llamaba
-    # cmux-pet: migrar en vez de empezar de cero.
-    petdir = Path(os.path.expanduser("~")) / ".lucy"
-    legacy_petdir = Path(os.path.expanduser("~")) / ".cmux-pet"
-    if not petdir.exists() and legacy_petdir.exists():
-        try:
-            shutil.move(str(legacy_petdir), str(petdir))
-            print(f"migrado {legacy_petdir} -> {petdir}")
-        except OSError:
-            pass
-    (petdir / "voices").mkdir(parents=True, exist_ok=True)
+    # Preparar el estado en disco de la mascota. Si viene de un nombre anterior
+    # del producto, se migra en vez de empezar de cero. La mascota vieja corre
+    # desde ese directorio y Windows no deja moverlo con archivos abiertos: se
+    # detiene primero. Si aun asi falla, crear el directorio nuevo dejaria el
+    # viejo huerfano para siempre, asi que se para y se dice.
+    legacy = next((d for d in paths.LEGACY_HOMES if d.exists()), None)
+    if legacy is not None and not paths.HOME.exists():
+        stop_running_pet(legacy)
+        if paths.migrate_legacy_home() is None:
+            print(f"error: no pude mover {legacy} a {paths.HOME}. "
+                  "Cierra la mascota y vuelve a correr esto.", file=sys.stderr)
+            return 1
+        print(f"migrado {legacy} -> {paths.HOME}")
+    paths.VOICES.mkdir(parents=True, exist_ok=True)
 
     if args.uninstall:
-        print(f"listo: hooks de lucy quitados de {settings_path}")
+        print(f"listo: hooks de mascotuscan quitados de {settings_path}")
         return 0
 
     if args.update:
         print(f"listo: actualizado y hooks al dia en {settings_path}")
         return 0
 
-    print(f"listo: hooks de lucy instalados en {settings_path}")
+    print(f"listo: hooks de mascotuscan instalados en {settings_path}")
     print("")
     print("La mascota arranca sola en tu proxima sesion de Claude Code.")
     print("Para lanzarla ahora mismo:")

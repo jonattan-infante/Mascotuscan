@@ -41,7 +41,7 @@ printf '# Changelog\n\n## [0.1.0] — 2026-01-01\n\n### Agregado\n\n- Primera.\n
 commit "feat: primera funcion" 0.1.0
 check "sin tags y con feat propone 0.1.0" "0.1.0" "$(run next-version.sh 2>/dev/null)"
 
-g tag -a v0.1.0 -m "lucy 0.1.0" -m "- Primera."
+g tag -a v0.1.0 -m "mascotuscan 0.1.0" -m "- Primera."
 check "sin commits desde el tag sale 1" "1" "$(run next-version.sh >/dev/null 2>&1; echo $?)"
 
 commit "fix(voz): arregla algo"
@@ -72,7 +72,7 @@ check "changelog-section falla si no existe" "1" "$(run changelog-section.sh 9.9
 # --- check-tag ---
 commit "chore(release): 0.2.0" 0.2.0
 msg="$WORK/msg"
-{ echo "lucy 0.2.0"; echo; run changelog-section.sh 0.2.0; } > "$msg"
+{ echo "mascotuscan 0.2.0"; echo; run changelog-section.sh 0.2.0; } > "$msg"
 
 g tag -a v0.2.0 -F "$msg"
 check "un tag correcto pasa (sin firma permitida)" "0" \
@@ -85,10 +85,10 @@ check "un tag ligero falla" "1" "$(run check-tag.sh ligero-0.2.0 --no-signature 
 
 g tag -a v0.2.1 -m "0.2.1" -m "notas"
 out="$(run check-tag.sh v0.2.1 --no-signature 2>&1 || true)"
-check "primera linea distinta de 'lucy X.Y.Z' falla" "1" "$(grep -c "primera linea debe ser 'lucy 0.2.1'" <<< "$out")"
+check "primera linea distinta de 'mascotuscan X.Y.Z' falla" "1" "$(grep -c "primera linea debe ser 'mascotuscan 0.2.1'" <<< "$out")"
 check "VERSION distinta en el commit falla" "1" "$(grep -c "VERSION en el commit dice '0.2.0'" <<< "$out")"
 
-g tag -a v0.3.0 -m "lucy 0.3.0"
+g tag -a v0.3.0 -m "mascotuscan 0.3.0"
 out="$(run check-tag.sh v0.3.0 --no-signature 2>&1 || true)"
 check "sin notas falla" "1" "$(grep -c 'sin notas' <<< "$out")"
 
@@ -100,7 +100,7 @@ g checkout -q -b aparte
 commit "feat: fuera de main" 0.4.0
 printf '## [0.4.0] — 2026-03-03\n\n- x.\n' >> "$WORK/CHANGELOG.md"
 commit "chore(release): 0.4.0"
-g tag -a v0.4.0 -m "lucy 0.4.0" -m "- x."
+g tag -a v0.4.0 -m "mascotuscan 0.4.0" -m "- x."
 out="$(run check-tag.sh v0.4.0 --on main --no-signature 2>&1 || true)"
 check "un commit fuera de main falla con --on main" "1" "$(grep -c 'no esta en main' <<< "$out")"
 

@@ -4,7 +4,7 @@ Plan maestro. **Un estado solo avanza con evidencia**: un comando que se pueda
 correr, un archivo que se pueda abrir, o una salida pegada. Sin evidencia, el
 estado es "por verificar".
 
-Última revisión: **2026-09-17**
+Última revisión: **2026-09-27**
 
 ## P0 — Baseline
 
@@ -64,6 +64,7 @@ estado es "por verificar".
 | Skeleton de `WmuxEventSource` (PR4 de 4) | `start()` llama `onUnavailable` y nunca `onEvent`; no está en `makeEventSources()`. 2 tests (`WmuxEventSourceTests`): avisa no-disponible sin emitir eventos, y no aparece en la lista por defecto. Decisión explícita: OpenCode (PR3) queda pendiente porque no hay cómo probar el plugin contra una instalación real |
 | Responder permiso/pregunta (PR1 de 2, `docs/adr/0009`): plomería sin UI | `docs/reference/agent-reply.md`; `NormalizedEvent.requestId` extraído de `_opencode_request_id` en `CmuxEventSource.translate()`; `PetController.pendingRequests` poblado en `ingest(_:)`, con barrida (`sweepExpiredRequests`); `PetController+Actions.swift`: `fetchPendingContent`/`replyPermission`/`replyQuestion`. Esquema real de `feed.permission.reply`/`feed.question.reply` verificado a mano contra el propio error de validación del RPC (sin tocar ningún permiso/pregunta real). 10 tests nuevos. `make verify` → 132 tests Swift + 54 Python, todo verde. Sin cambio visible todavía: la burbuja no muestra botones hasta PR2 |
 | Responder permiso/pregunta (PR2 de 2, `docs/adr/0009`): botones en la burbuja | `BubbleView` gana sus primeras sub-regiones clicables (`BubbleOption`, una línea por opción, mismo motor de `docs/adr/0003`); `PetController.respondToOption`/`showPendingRequest`; costura de test `fetchPendingContent` (mismo patrón que `isCmuxFrontmost`). 11 tests nuevos (`BubbleViewTests` 3, `summarizeToolInput` 3, wiring en `PetControllerIngestTests` 5). `make render` → `burbuja-pendiente-0.png`/`-1.png`, revisadas a ojo. `make verify` → 143 tests Swift + 54 Python, todo verde. ⚠️ Falta la verificación de punta a punta contra un permiso/pregunta real (ver `docs/reference/agent-reply.md`) |
+| Renombrado a MascoTuscan, comando `mascotuscan` (`docs/adr/0010`), con migración encadenada `~/.lucy` y `~/.cmux-pet` → `~/.mascotuscan` | en Linux, 2026-09-27: `make test-windows` → 61 tests (7 nuevos: `test_paths.py` y hooks con nombre anterior en `test_install.py`); `test-installer.sh` → 24 ok con `sed` de GNU en lugar del de BSD (10 nuevos: migra `~/.lucy`, quita su enganche del zshrc, un solo backup con el original) y 5 de ellos fallan si se vacía `LEGACY_NAMES`; `test-shell-hooks.sh` → 8 ok; `test-repo-integrity.sh` → ok; `test-release-tooling.sh` → 19 ok; `install.py` sobre un `HOME` falso con `.lucy` y el hook viejo registrado → migrado, hook reemplazado, el ajeno intacto. **Swift sin compilar en local** (sin toolchain); `PathsTests.swift` (5 casos) lo corre CI ⚠️ 2026-09-27 |
 
 ## En vuelo
 
@@ -71,7 +72,8 @@ estado es "por verificar".
 |---|---|---|---|
 | F1 | Mascotas con arte propio | el renderer `sprites` funciona, pero ningún pack incluido lo usa | hacer un pack de ejemplo con sprites, aunque sean formas simples, para que se vea el camino |
 | F2 | Más renderers integrados | hay `vector:droid`, `vector:ball` y `vector:sage` | portar `ball` y `sage` al Canvas de Windows |
-| F3 | OpenCode sobre el contrato `EventSource` (PR3 de `docs/adr/0008`) | PR1, PR2 y PR4 (wmux) entregados; PR3 en espera de poder probar el plugin contra una instalación real de OpenCode | escribir `bridges/opencode/lucyglow-bridge.js` y los dos adapters cuando haya cómo verificarlo |
+| F3 | OpenCode sobre el contrato `EventSource` (PR3 de `docs/adr/0008`) | PR1, PR2 y PR4 (wmux) entregados; PR3 en espera de poder probar el plugin contra una instalación real de OpenCode | escribir `bridges/opencode/mascotuscan-bridge.js` y los dos adapters cuando haya cómo verificarlo |
+| F5 | Renombrado a MascoTuscan (`docs/adr/0010`): pasos fuera del repo | código, tests y documentos cambiados; CI de macOS pendiente | renombrar el repo en GitHub a `mascotuscan` antes de mergear; tras el merge, publicar una versión; en la máquina del autor, `lucy update` y confirmar `~/.mascotuscan`, el zshrc y `mascotuscan --version` ⚠️ 2026-09-27 |
 | F4 | Responder permiso/pregunta desde la burbuja (`docs/adr/0009`): verificación real pendiente | PR1 y PR2 entregados (plomería + botones), `make verify` en verde | probar a mano contra un permiso/pregunta real (workspace descartable): clic en la burbuja, confirmar en el pane que el agente siguió con esa respuesta |
 
 
@@ -88,6 +90,7 @@ estado es "por verificar".
 | R8 | `release.yml` falla en un tag | no hay release y nadie recibe el aviso; el instalador sigue en la última publicada | ocurrió de verdad en `v0.2.1`: `check-tag.sh` en CI daba "tag ligero" por un artefacto de checkout de GitHub Actions (R11). Corregido y verificado en `v0.2.2` |
 | R10 | El bypass del ruleset de tags no aplica al dueño y `make tag` no puede empujar | el tag queda en local; nada publicado | verificado con `v0.2.1` y `v0.2.2`: GitHub reporta "Bypassed rule violations", el bypass del rol administrador funciona |
 | R11 | GitHub Actions entrega el ref de un tag apuntando al commit, no al objeto tag anotado | `check-tag.sh` en CI rechaza cualquier tag real como "ligero" | `git fetch --tags --force origin` tras el checkout, antes de verificar; documentado en `release.yml` y en el CHANGELOG de `0.2.2` |
+| R12 | Entre el merge del renombrado y el primer release con el nombre nuevo, `install.sh` de `main` clona el último release, que compila `lucy` y no `mascotuscan` | `curl ... \| bash` falla con "no encuentro el binario compilado" | falla visible, no silenciosa; `lucy update` no reinstala mientras no haya versión más nueva. Publicar justo después del merge (F5) |
 | R9 | La burbuja de actualización en Tk (Windows) no se ha visto en una máquina Windows real | el aviso podría no mostrarse aunque la lógica esté probada | la lógica pura tiene 17 tests y `Checker` está probado con `file://`; falta `--selftest` con `LUCY_UPDATE_URL` en Windows ⚠️ 2026-09-17 |
 
 ## Backlog

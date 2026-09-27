@@ -1,4 +1,4 @@
-# LucyGlow para Windows
+# MascoTuscan para Windows
 
 Una mascota flotante que te cuenta qué está haciendo **Claude Code** en Windows.
 
@@ -11,7 +11,7 @@ en vez de cmux, observa a **Claude Code** a través de sus *hooks*.
 Claude Code hooks (PowerShell)
         │  cada evento -> una linea JSON
         ▼
-%USERPROFILE%\.lucy\shell.jsonl
+%USERPROFILE%\.mascotuscan\shell.jsonl
         │  tail
         ▼
    la mascota (tkinter)  ->  uno de seis estados  ->  pet pack (astro / gatito)
@@ -27,7 +27,7 @@ Windows 10/11 · Python 3 (viene tkinter) · sin dependencias que instalar.
 | El pet pack (`pet.json`, `phrases.json`, `persona.md`) | se cargan **los mismos** `pets/astro` y `pets/gatito` del repo |
 | Las plantillas con marcadores (`{agent}`, `{cmd}`, `{where}`...) | idénticas; la voz sale del pack, no del código |
 | Fuente de eventos: cmux (`events` + `rpc`) | **Claude Code hooks** escribiendo `shell.jsonl` |
-| Estado en disco bajo `~/.lucy` | `%USERPROFILE%\.lucy` |
+| Estado en disco bajo `~/.mascotuscan` | `%USERPROFILE%\.mascotuscan` |
 | UI en AppKit (`NSPanel`, `NSView`) | tkinter (`Canvas`, `-transparentcolor`) |
 | Arranque desde el shell (no launchd) | autoarranque desde el hook `SessionStart` |
 | Aviso de versión nueva (`docs/reference/versioning.md`) | idéntico: mismo endpoint, mismo `update.json`, mismos casos de prueba |
@@ -46,7 +46,7 @@ python install.py
 ```
 
 Eso registra los hooks en `~\.claude\settings.json` (respetando los que ya
-tengas) y prepara `%USERPROFILE%\.lucy`. La mascota arranca sola en tu
+tengas) y prepara `%USERPROFILE%\.mascotuscan`. La mascota arranca sola en tu
 próxima sesión de Claude Code, en la esquina inferior derecha.
 
 Para lanzarla ahora mismo, sin esperar:
@@ -75,6 +75,12 @@ python pet.py --version        # que version corre
 `--update` se niega si hay cambios sin commit en el checkout. La comprobación se
 apaga con `"checkUpdates": false` en `config.json`.
 
+**Si venías de LucyGlow**: el `--update` de esa versión corre con su código
+viejo y vuelve a registrar `lucy-hook.ps1`, que ya no existe. Corre
+`python install.py` una vez más: reemplaza los hooks por `mascotuscan-hook.ps1`,
+detiene la mascota vieja y mueve `%USERPROFILE%\.lucy` a
+`%USERPROFILE%\.mascotuscan`. Ver `docs/adr/0010`.
+
 ## Qué hace
 
 - **Avisa cuando Claude termina** su turno (`Stop`), y en qué workspace.
@@ -94,7 +100,7 @@ paralelo, el estado global es la prioridad más alta entre todas
 ## Elegir mascota
 
 Vienen las dos incluidas del repo. Click derecho sobre la mascota para cambiar,
-o edita `%USERPROFILE%\.lucy\config.json`:
+o edita `%USERPROFILE%\.mascotuscan\config.json`:
 
 ```json
 {
@@ -108,11 +114,11 @@ o edita `%USERPROFILE%\.lucy\config.json`:
 
 ## Cómo está hecho
 
-Todo el código está en `lucy_win/`, dividido igual que el proyecto macOS:
+Todo el código está en `mascotuscan_win/`, dividido igual que el proyecto macOS:
 
 | Archivo | Qué vive ahí | Equivalente macOS |
 |---|---|---|
-| `paths.py` | rutas bajo `%USERPROFILE%\.lucy` | `Support/Paths.swift` |
+| `paths.py` | rutas bajo `%USERPROFILE%\.mascotuscan` | `Support/Paths.swift` |
 | `wording.py` | texto neutro del programa (verbo por herramienta) | `Voice/Wording.swift` |
 | `events.py` | parseo de `shell.jsonl` y tail sin bloquear | `PetController+Sources.swift` |
 | `state.py` | los seis estados y la máquina que los resuelve | `Model/Mood.swift` + Controller |
@@ -121,7 +127,7 @@ Todo el código está en `lucy_win/`, dividido igual que el proyecto macOS:
 | `update.py` | versión publicada, regla de silencio, estado `update.json` | `Model/Update.swift` |
 | `ui.py` | ventana flotante, droide vectorial, burbuja, roster | `Views/` |
 | `app.py` | orquestador: conecta fuente, estado y vista | `Controller/PetController.swift` |
-| `hooks/lucy-hook.ps1` | el hook que Claude Code ejecuta en cada evento | `shell/pet.zsh` |
+| `hooks/mascotuscan-hook.ps1` | el hook que Claude Code ejecuta en cada evento | `shell/pet.zsh` |
 | `install.py` | registra los hooks en `settings.json` | `install.sh` |
 
 ## Verificar

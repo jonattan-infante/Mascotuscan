@@ -4,8 +4,8 @@ Un índice de mascotas que cualquiera puede instalar con un comando, sin servido
 y sin cuenta.
 
 ```bash
-lucy search              # ver qué hay
-lucy install gatito --use
+mascotuscan search              # ver qué hay
+mascotuscan install gatito --use
 ```
 
 ## Cómo funciona
@@ -15,11 +15,11 @@ El marketplace es **un archivo JSON en este repositorio**, servido por
 que se caiga ni que cueste dinero mantener.
 
 ```
-registry.json  ──raw.github──►  lucy search
-                                lucy install <id>
-                                        │
-                                        └─► git clone del repo del autor
-                                            └─► copia a ~/.lucy/pets/<id>/
+registry.json  ──raw.github──►  mascotuscan search
+                                mascotuscan install <id>
+                                               │
+                                               └─► git clone del repo del autor
+                                                   └─► copia a ~/.mascotuscan/pets/<id>/
 ```
 
 Cada entrada del índice **apunta** al paquete; no lo contiene:
@@ -33,7 +33,7 @@ Cada entrada del índice **apunta** al paquete; no lo contiene:
   "version": "1.0.0",
   "language": "es",
   "renderer": "vector:droid",
-  "source": "https://github.com/jonattan-infante/lucyglow.git",
+  "source": "https://github.com/jonattan-infante/mascotuscan.git",
   "path": "pets/gatito",
   "tags": ["gato", "vector", "espanol"]
 }
@@ -49,11 +49,11 @@ el control de su trabajo ni tiene que pedir permiso para actualizarlo.
 1. Crea el paquete y valídalo:
 
    ```bash
-   lucy new mi-mascota
+   mascotuscan new mi-mascota
    # edita persona.md, y las imágenes si usas sprites
-   lucy validate ./mi-mascota
-   lucy install ./mi-mascota --use
-   lucy voice mi-mascota
+   mascotuscan validate ./mi-mascota
+   mascotuscan install ./mi-mascota --use
+   mascotuscan voice mi-mascota
    ```
 
 2. Súbelo a un repositorio público tuyo. Puede ser un repo dedicado, con el
@@ -63,7 +63,7 @@ el control de su trabajo ni tiene que pedir permiso para actualizarlo.
    Nada más: no toques ningún otro archivo.
 
 4. Al mergearse, tu mascota está disponible para todos con
-   `lucy install <tu-id>`.
+   `mascotuscan install <tu-id>`.
 
 ## Qué se revisa en el PR
 
@@ -71,7 +71,7 @@ No es una curaduría de gusto. Se revisa que funcione y que no haga daño:
 
 | Se revisa | Por qué |
 |---|---|
-| `lucy validate` pasa sobre el paquete | una mascota que no carga es una mala primera experiencia |
+| `mascotuscan validate` pasa sobre el paquete | una mascota que no carga es una mala primera experiencia |
 | El `id` no está tomado | los ids son únicos en el índice |
 | `source` es público y clonable sin credenciales | si no, el install falla para todos |
 | El `license` declarado es coherente con el arte | ver abajo |
@@ -101,10 +101,10 @@ Sube el cambio a tu repositorio, y en el PR al índice sube `version`. El usuari
 reinstala con:
 
 ```bash
-lucy install mi-mascota --force
+mascotuscan install mi-mascota --force
 ```
 
-Sus frases generadas **no se pierden**: viven en `~/.lucy/voices/<id>.json`,
+Sus frases generadas **no se pierden**: viven en `~/.mascotuscan/voices/<id>.json`,
 fuera del paquete, precisamente para que una actualización no las borre.
 
 ## Un índice propio
@@ -112,19 +112,19 @@ fuera del paquete, precisamente para que una actualización no las borre.
 Para una empresa o para probar, se puede apuntar a otro índice:
 
 ```bash
-export LUCY_REGISTRY=https://ejemplo.interno/mascotas.json
-lucy search
+export MASCOTUSCAN_REGISTRY=https://ejemplo.interno/mascotas.json
+mascotuscan search
 ```
 
 El formato es el mismo. También se puede saltar el índice por completo:
 
 ```bash
-lucy install https://github.com/alguien/su-mascota.git
-lucy install ./una/carpeta/local
+mascotuscan install https://github.com/alguien/su-mascota.git
+mascotuscan install ./una/carpeta/local
 ```
 
 ## Sin red
 
-`search` guarda una copia del índice en `~/.lucy/registry-cache.json` y la usa
+`search` guarda una copia del índice en `~/.mascotuscan/registry-cache.json` y la usa
 cuando no hay conexión, avisando en el log. `list`, `use` e `install` desde ruta
 local nunca necesitan red.

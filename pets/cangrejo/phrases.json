@@ -46,7 +46,7 @@
     "{port} dejo de escuchar{where}. Espero que no me cueste."
   ],
   "updateAvailable": [
-    "Arrr, LucyGlow {version} ya está en el muelle. Actualizar es gratis, muchacho, aprovecha.",
+    "Arrr, MascoTuscan {version} ya está en el muelle. Actualizar es gratis, muchacho, aprovecha.",
     "Hay una versión nueva: {version}. Una inversión que no cuesta un centavo."
   ]
 }

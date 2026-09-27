@@ -12,7 +12,7 @@ cómo se sube) está en [`versioning.md`](versioning.md).
 | 1 | **Nombre `vX.Y.Z`.** Prefijo `v`, tres números, sin sufijos. Ni `0.3`, ni `v0.3.0-rc1`, ni `release-0.3.0` | `scripts/check-tag.sh`, ruleset de GitHub (`refs/tags/v*`) |
 | 2 | **Anotado, nunca ligero.** Un tag ligero es un puntero sin autor, fecha ni mensaje. El anotado es un objeto con todo eso, y se puede firmar | `check-tag.sh` |
 | 3 | **Firmado.** Con la llave SSH o GPG de quien publica. Es lo que permite saber que el tag lo creó una persona autorizada y no alguien con acceso al remoto | `check-tag.sh` (presencia); GitHub muestra "Verified" si la llave está registrada |
-| 4 | **Mensaje con forma fija.** Primera línea `lucy X.Y.Z`; línea en blanco; después, tal cual, la sección `## [X.Y.Z]` del `CHANGELOG.md`. El tag se explica solo con `git tag -n99 vX.Y.Z` | `check-tag.sh` |
+| 4 | **Mensaje con forma fija.** Primera línea `mascotuscan X.Y.Z` (los ya publicados llevan el nombre de su momento: `cmux-pet` hasta `v0.2.2`, `lucy` en `v0.3.0`; ver `docs/adr/0010`); línea en blanco; después, tal cual, la sección `## [X.Y.Z]` del `CHANGELOG.md`. El tag se explica solo con `git tag -n99 vX.Y.Z` | `check-tag.sh` |
 | 5 | **Apunta a un commit de `main`** y ese commit tiene `VERSION` = `X.Y.Z` y la sección del CHANGELOG | `check-tag.sh --on main`, `release.yml` |
 | 6 | **Inmutable.** Un tag empujado no se mueve ni se borra. Si salió mal, se sube la versión y se etiqueta de nuevo; la versión perdida se anota en el CHANGELOG como "no publicada" | ruleset de GitHub: sin `update` ni `deletion` en `v*` |
 | 7 | **Uno por versión y en orden.** No se etiqueta una versión menor que la última publicada | `check-tag.sh` |
@@ -129,7 +129,7 @@ corre `make tag`; para él la regla 6 es convención, no candado. **El bypass en
 push real se comprueba con el primer `make tag` después del ruleset** ⚠️ 2026-09-17.
 
 ```bash
-gh api repos/jonattan-infante/lucyglow/rulesets --jq '.[] | "\(.name): \(.target) \(.enforcement)"'
+gh api repos/jonattan-infante/mascotuscan/rulesets --jq '.[] | "\(.name): \(.target) \(.enforcement)"'
 ```
 
 ## Automatizar del todo

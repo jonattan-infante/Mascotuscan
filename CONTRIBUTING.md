@@ -3,8 +3,8 @@
 ## Empezar
 
 ```bash
-git clone https://github.com/jonattan-infante/lucyglow.git
-cd lucyglow
+git clone https://github.com/jonattan-infante/mascotuscan.git
+cd mascotuscan
 make verify      # debe pasar antes de que toques nada
 make run         # arranca en primer plano, Ctrl-C para salir
 ```
@@ -124,7 +124,7 @@ Para firmar hace falta configurar la llave una vez; está en
 
 Incluye siempre:
 
-- salida de `~/.lucy/pet.log` (registra cada aviso, cada supresión y cada
+- salida de `~/.mascotuscan/pet.log` (registra cada aviso, cada supresión y cada
   caída del stream)
 - versión de macOS y de cmux
 - `cmux capabilities | grep access_mode`

@@ -5,7 +5,7 @@
 #                              sinteticos, verifica los estados y sale
 #   python pet.py --version    imprime la version del producto
 #
-# La logica vive en el paquete lucy_win para que sea testeable; este archivo
+# La logica vive en el paquete mascotuscan_win para que sea testeable; este archivo
 # solo arranca (como main.swift en macOS).
 
 import sys
@@ -15,16 +15,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Antes de tkinter: --version tiene que responder aunque falte la UI.
 if "--version" in sys.argv:
-    from lucy_win import __version__
-    print(f"lucy {__version__}")
+    from mascotuscan_win import __version__
+    print(f"mascotuscan {__version__}")
     raise SystemExit(0)
 
 import tkinter as tk  # noqa: E402
 
-from lucy_win.app import App          # noqa: E402
-from lucy_win.config import Config    # noqa: E402
-from lucy_win.state import Mood        # noqa: E402
-from lucy_win.events import Tailer     # noqa: E402
+from mascotuscan_win.app import App          # noqa: E402
+from mascotuscan_win.config import Config    # noqa: E402
+from mascotuscan_win.state import Mood        # noqa: E402
+from mascotuscan_win.events import Tailer     # noqa: E402
 
 
 def selftest() -> int:
