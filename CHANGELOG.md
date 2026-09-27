@@ -3,6 +3,51 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado semántico.
 
+## [0.4.0] — 2026-09-27
+
+El producto se llamaba LucyGlow. Ver `docs/adr/0010`.
+
+### Incompatible
+
+- Renombrado a **MascoTuscan**, comando `mascotuscan`. Repositorio de GitHub:
+  `Mascotuscan`; la URL vieja redirige.
+- Librería Swift `LucyGlowKit` → `MascoTuscanKit`; paquete de Windows
+  `lucy_win` → `mascotuscan_win`; hook de Windows `lucy-hook.ps1` →
+  `mascotuscan-hook.ps1`.
+- Variables de entorno `LUCY_*` → `MASCOTUSCAN_*`. Si pusiste `~/.lucy/bin` en
+  tu `PATH`, cámbialo a mano.
+- Directorio de estado `~/.lucy` → `~/.mascotuscan`, con migración automática al
+  arrancar y al instalar, en macOS y en Windows. También migra un `~/.cmux-pet`
+  que haya quedado de antes.
+- La primera línea del mensaje de cada tag pasa a ser `mascotuscan X.Y.Z`.
+- En Windows, después de `python install.py --update` desde una versión
+  anterior, hay que correr `python install.py` una vez más: el actualizador
+  viejo no conoce el nombre nuevo del hook.
+
+### Agregado
+
+- En macOS, responder desde la burbuja un permiso o una pregunta de Claude, con
+  clics: sí o no para un permiso, una línea por opción para una pregunta. La
+  burbuja muestra el contenido real (el comando que pide permiso, las opciones
+  de la pregunta), que se le pide a cmux por el id de la solicitud. Ver
+  `docs/adr/0009`. Probado contra el RPC de cmux, sin un permiso real todavía
+  ⚠️ 2026-09-27.
+
+### Cambiado
+
+- Las fuentes de eventos cumplen un contrato común (`EventSource` y
+  `NormalizedEvent`, `docs/reference/event-source.md`), en macOS y en Windows,
+  para que agregar una nueva no toque el orquestador. Sin cambio de
+  comportamiento.
+
+### Corregido
+
+- Actualizar desde un nombre anterior ya no deja el `source` viejo en
+  `~/.zshrc`, que daba un error al abrir cada terminal, ni hooks de Claude Code
+  en Windows apuntando a un archivo que ya no existe.
+- Si el directorio de estado no se puede migrar, se dice; antes se creaba el
+  nuevo vacío y el viejo quedaba huérfano.
+
 ## [0.3.0] — 2026-09-17
 
 El producto se llamaba `cmux-pet`, un nombre que prometía una integración con

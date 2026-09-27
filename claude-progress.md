@@ -218,24 +218,34 @@ install.py con HOME falso    -> "migrado .../.lucy -> .../.mascotuscan", hook
                                 lucy-hook.ps1 reemplazado, hook ajeno intacto
 ```
 
-⚠️ 2026-09-27: **Swift sin compilar.** `download.swift.org` está bloqueado por la
-red de la sesión. El renombrado de Swift es mecánico (módulo, target, una
-constante), pero `PetPaths.migrateLegacyHome` y `PathsTests.swift` (5 casos,
-los mismos que `test_paths.py`) solo los va a correr CI. `test-pet-packs.sh` y
-`make render` tampoco corrieron.
+En la sesión no había Swift (`download.swift.org` bloqueado por la red), así que
+Swift lo verificó CI, run 36293399797 del PR #17, los 6 checks en verde:
+
+```
+build y tests (macos-14)  -> Executed 148 tests, with 0 failures (143 + 5 de
+                             PathsTests); swift build -c release -> mascotuscan 0.3.0
+shell e instalador        -> test-installer.sh 24 ok con el sed de BSD de verdad
+mascotas y marketplace, vista previa, port de Windows, build (macos-15) -> success
+```
+
+El PR #17 entró a `main` como `0a6bf04`. El repositorio ya se llama `Mascotuscan`
+en GitHub: `raw.githubusercontent.com` responde 200 en `main` con `mascotuscan`,
+`Mascotuscan` y el viejo `lucyglow` (la URL vieja redirige).
+
+Versión `0.4.0` preparada en `claude/awesome-newton-f3bluk` (PR aparte, como
+`chore(release): 0.2.1`): `next-version.sh` propuso `0.4.0` ("6 commit(s),
+salto minor"), la sección del CHANGELOG se reescribió a mano desde el borrador de
+`release-notes.sh`, y `bump-version.sh 0.4.0` se corrió sin tocar, con un `sed`
+de envoltorio en el `PATH` que traduce el `-i ''` de BSD al de GNU.
 
 ## Próximo paso
 
-**Renombrado (F5 en `EXECUTION-PLAN.md`), en este orden:**
+**Renombrado (F5 en `EXECUTION-PLAN.md`).** Hechos: repo renombrado, PR #17
+mergeado con CI en verde, versión `0.4.0` preparada. Falta, en este orden:
 
-1. Renombrar el repositorio en GitHub a `mascotuscan` (Settings > General)
-   **antes** de mergear: el código nuevo apunta a `jonattan-infante/mascotuscan`.
-   GitHub redirige la URL vieja, así que las instalaciones de `lucy` siguen
-   encontrando releases.
-2. Que CI compile y corra los tests de Swift; después, `make merge`.
-3. Publicar una versión apenas entre (`make next-version`, `bump-version.sh`,
-   CHANGELOG, `make tag`). Hasta entonces `curl ... | bash` falla (R12).
-4. En la máquina del autor: `lucy update`, y confirmar que `~/.lucy` pasó a
+1. Mergear el PR de `0.4.0` y, desde `main` al día, `make tag`. Hasta que exista
+   ese release, `curl ... | bash` falla (R12).
+2. En la máquina del autor: `lucy update`, y confirmar que `~/.lucy` pasó a
    `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que
    `mascotuscan --version` responde. Si `~/.lucy/bin` está en el `PATH`, cambiarlo.
 
