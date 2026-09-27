@@ -1,9 +1,9 @@
 # Fuentes de eventos: el contrato `EventSource`
 
 Contrato del producto, no de una plataforma ni de una fuente concreta. Lo
-implementan `Sources/LucyGlowKit/Controller/EventSource.swift` (protocolo +
+implementan `Sources/MascoTuscanKit/Controller/EventSource.swift` (protocolo +
 `NormalizedEvent`) del lado de macOS, y — a partir de la generalización de
-`Tailer` en Windows — `windows/lucy_win/events.py` del lado de Python. Decisión
+`Tailer` en Windows — `windows/mascotuscan_win/events.py` del lado de Python. Decisión
 y motivos: `docs/adr/0008`.
 
 Antes de este contrato, cada fuente (cmux, hooks de Claude Code) estaba
@@ -49,7 +49,7 @@ de este contrato, más lo que hoy solo aporta cmux:
 `Notification` es deliberadamente un solo nombre con un `reason` opcional en
 vez de tres: `agent.hook.PermissionRequest`/`AskUserQuestion` son categorías
 propias de **cmux**, no hooks nativos de Claude Code (no están en el `KNOWN`
-de `windows/lucy_win/events.py`). Windows logra la misma distinción
+de `windows/mascotuscan_win/events.py`). Windows logra la misma distinción
 adivinando por texto en `state.py:_what()`. Cualquier fuente nueva que sepa
 distinguir "pide permiso" de "hace una pregunta" llena `reason` con
 precisión; la que no sepa, usa `generic`.
@@ -106,7 +106,7 @@ occurredAt    : fecha
 
 ## Del lado de Windows
 
-`windows/lucy_win/events.py::Tailer` ya cumplía casi todo el contrato antes de
+`windows/mascotuscan_win/events.py::Tailer` ya cumplía casi todo el contrato antes de
 que existiera este documento: solo le faltaba que el parser fuera inyectable
 (`Tailer(path, parse=...)`, default `parse_line`) para poder reusar la misma
 clase con otra fuente que escriba líneas en su propio formato. No hace falta
@@ -121,7 +121,7 @@ duplicar `state.py` cuando llegue esa fuente.
 
 ## Para verificar
 
-`Tests/LucyGlowKitTests/CmuxEventSourceTests.swift` y
+`Tests/MascoTuscanKitTests/CmuxEventSourceTests.swift` y
 `ShellHookEventSourceTests.swift` prueban `translate(_:)` de cada fuente
 contra payloads literales, sin lanzar ningún proceso.
 `PetControllerIngestTests.swift` prueba `ingest(_:)` con `NormalizedEvent`

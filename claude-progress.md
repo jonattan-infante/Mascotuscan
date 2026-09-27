@@ -6,7 +6,7 @@
 
 ## Estado verificado
 
-Fecha: **2026-09-17**
+Fecha: **2026-09-27** (renombrado a MascoTuscan, ver su sección abajo; lo anterior es del 2026-09-17)
 
 El proyecto es una **plataforma de mascotas con dos runtimes**: macOS en Swift y
 Windows en Python (`windows/`). Desde esta sesión la **versión es del producto**
@@ -189,7 +189,58 @@ un permiso/pregunta real (workspace descartable) que un clic en la burbuja
 efectivamente mueve al agente, no solo que el RPC devuelve `delivered: true`
 contra un id inventado. No se cierra la fase sin esa prueba.
 
+## Renombrado a MascoTuscan (`docs/adr/0010`)
+
+Pedido del autor: el proyecto se llama `mascotuscan`. Decidido con él: cambio
+completo como en `docs/adr/0007`, comando `mascotuscan`, marca `MascoTuscan`.
+Rama `claude/awesome-newton-f3bluk`. Los nombres viejos que quedan en el repo son
+a propósito: la migración, sus tests, los ADR 0001-0009, el CHANGELOG publicado
+y la evidencia pegada en este archivo y en `EXECUTION-PLAN.md`.
+
+Además del reemplazo de nombres, arregla lo que el renombrado anterior dejó
+suelto: el `source ~/.lucy/...` del zshrc (ahora `install.sh` lo reemplaza), los
+hooks de Claude Code con el nombre viejo en Windows (`install.py` los reconoce),
+la migración que fallaba en silencio y la mascota vieja corriendo sobre el
+directorio que se mueve.
+
+Verificado en Linux (sesión en la nube, sin Swift ni PowerShell):
+
+```
+make test-windows            -> 61 tests, 0 fallos (54 + 7 nuevos)
+test-installer.sh            -> 24 ok (14 + 10 nuevos), con /usr/bin/sed -i '' cambiado
+                                a sed -i en una copia: el script es para BSD
+  mismo, con LEGACY_NAMES=() -> 5 FALLA (quita el enganche viejo, migra...)
+test-shell-hooks.sh          -> 8 ok (zsh instalado con apt)
+test-repo-integrity.sh       -> ok, CLAUDE.md en 190 lineas
+test-release-tooling.sh      -> 19 ok ('mascotuscan X.Y.Z' como primera linea del tag)
+python3 windows/pet.py --version -> mascotuscan 0.3.0
+install.py con HOME falso    -> "migrado .../.lucy -> .../.mascotuscan", hook
+                                lucy-hook.ps1 reemplazado, hook ajeno intacto
+```
+
+⚠️ 2026-09-27: **Swift sin compilar.** `download.swift.org` está bloqueado por la
+red de la sesión. El renombrado de Swift es mecánico (módulo, target, una
+constante), pero `PetPaths.migrateLegacyHome` y `PathsTests.swift` (5 casos,
+los mismos que `test_paths.py`) solo los va a correr CI. `test-pet-packs.sh` y
+`make render` tampoco corrieron.
+
 ## Próximo paso
+
+**Renombrado (F5 en `EXECUTION-PLAN.md`), en este orden:**
+
+1. Renombrar el repositorio en GitHub a `mascotuscan` (Settings > General)
+   **antes** de mergear: el código nuevo apunta a `jonattan-infante/mascotuscan`.
+   GitHub redirige la URL vieja, así que las instalaciones de `lucy` siguen
+   encontrando releases.
+2. Que CI compile y corra los tests de Swift; después, `make merge`.
+3. Publicar una versión apenas entre (`make next-version`, `bump-version.sh`,
+   CHANGELOG, `make tag`). Hasta entonces `curl ... | bash` falla (R12).
+4. En la máquina del autor: `lucy update`, y confirmar que `~/.lucy` pasó a
+   `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que
+   `mascotuscan --version` responde. Si `~/.lucy/bin` está en el `PATH`, cambiarlo.
+
+Después, lo que ya estaba pendiente:
+
 
 Verificación de punta a punta pendiente de arriba (F4 en
 `EXECUTION-PLAN.md`): provocar un permiso/una pregunta reales, clic en la
@@ -206,7 +257,7 @@ gh auth refresh -h github.com -s admin:ssh_signing_key
 gh ssh-key add ~/.ssh/id_ed25519_github.pub --type signing --title "firma de tags"
 ```
 
-Después: probar `python pet.py --selftest` con `LUCY_UPDATE_URL` en una máquina
+Después: probar `python pet.py --selftest` con `MASCOTUSCAN_UPDATE_URL` en una máquina
 Windows real (R9), y marcar el job `port de Windows` como check obligatorio (B13).
 
 ## Historial
@@ -221,6 +272,7 @@ Windows real (R9), y marcar el job `port de Windows` como check obligatorio (B13
 | 2026-09-17 | La versión es del producto: `VERSION`, guarda de integridad, release por tag, instalador al último release, y aviso de versión nueva con el mismo contrato en macOS y Windows (`docs/adr/0006`) |
 | 2026-09-17 | Primer release: `v0.2.0`. README reescrito. Reglas de tags con `check-tag.sh`, `next-version`, `release-notes`, firma SSH y ruleset en GitHub (`docs/reference/tags.md`) |
 | 2026-09-17 | Reglas de tags obligatorias en `CLAUDE.md` para cualquier agente de IA (PR #7). Primer tag bajo las reglas (`v0.2.1`) reveló un bug real de CI con tags anotados; corregido y publicado como `v0.2.2` (PR #9), con el ciclo de `lucy update` probado de punta a punta contra el release real |
+| 2026-09-27 | Renombrado de LucyGlow a MascoTuscan, comando `mascotuscan` (`docs/adr/0010`). Migración encadenada `~/.lucy`/`~/.cmux-pet`, y reemplazo de los enganches viejos en el zshrc y en los hooks de Claude Code |
 
 ## Trampas que ya costaron tiempo
 
@@ -264,6 +316,10 @@ No volver a caer en estas. Todas están documentadas con evidencia en
     `make tag` depende de `origin/main`.
 14. **`git branch -d` no borra una rama mergeada por squash**: para git no está
     "fully merged". Es `-D`, tras comprobar que el PR entró.
+15. **Mover el directorio de estado no alcanza para renombrar.** Fuera del repo
+    quedan cosas apuntando al nombre viejo: el `source` en el zshrc y los hooks
+    en el `settings.json` de Claude Code. El renombrado de `docs/adr/0007` no
+    las tocó; `docs/adr/0010` sí.
 
 ## Checklist de fin de sesión
 

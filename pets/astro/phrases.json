@@ -38,7 +38,7 @@
     "*blip* {port} dejó de escuchar{where}."
   ],
   "updateAvailable": [
-    "*bip-bip* Hay una versión nueva de LucyGlow: {version}. Solicito actualización de firmware.",
-    "*whirr* Salió LucyGlow {version}. Mis circuitos piden esa mejora."
+    "*bip-bip* Hay una versión nueva de MascoTuscan: {version}. Solicito actualización de firmware.",
+    "*whirr* Salió MascoTuscan {version}. Mis circuitos piden esa mejora."
   ]
 }

@@ -38,7 +38,7 @@
     "{port} dejó de escuchar{where}."
   ],
   "updateAvailable": [
-    "Mrrp. Hay una versión nueva de LucyGlow: {version}. Actualízame cuando dejes de mirar el sol.",
-    "Salió LucyGlow {version}. No es que me importe, pero podrías actualizarme."
+    "Mrrp. Hay una versión nueva de MascoTuscan: {version}. Actualízame cuando dejes de mirar el sol.",
+    "Salió MascoTuscan {version}. No es que me importe, pero podrías actualizarme."
   ]
 }

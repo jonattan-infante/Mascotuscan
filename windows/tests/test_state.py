@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from lucy_win.state import ACTIVE_WINDOW, PROMPT_WINDOW, StateMachine, Mood  # noqa: E402
+from mascotuscan_win.state import ACTIVE_WINDOW, PROMPT_WINDOW, StateMachine, Mood  # noqa: E402
 
 
 def ev(event, session="s1", cwd="C:/code/Fineract", **kw):

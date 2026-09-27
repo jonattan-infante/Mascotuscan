@@ -67,18 +67,18 @@ jobs:
 
       - name: El binario dice la version del tag
         run: |
-          bin="$(swift build -c release --show-bin-path)/lucy"
+          bin="$(swift build -c release --show-bin-path)/mascotuscan"
           got="$("$bin" --version)"
-          [[ "$got" == "lucy ${{ needs.verify.outputs.version }}" ]] \
+          [[ "$got" == "mascotuscan ${{ needs.verify.outputs.version }}" ]] \
             || { echo "el binario dice '$got'" >&2; exit 1; }
 
       - name: Empaquetar
         run: |
           v="${{ needs.verify.outputs.version }}"
-          bin="$(swift build -c release --show-bin-path)/lucy"
-          stage="lucy-$v-macos-arm64"
+          bin="$(swift build -c release --show-bin-path)/mascotuscan"
+          stage="mascotuscan-$v-macos-arm64"
           mkdir -p "$stage/bin"
-          cp "$bin" "$stage/bin/lucy"
+          cp "$bin" "$stage/bin/mascotuscan"
           cp -R shell pets VERSION LICENSE "$stage/"
           tar -czf "$stage.tar.gz" "$stage"
           shasum -a 256 "$stage.tar.gz" > "$stage.tar.gz.sha256"
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: lucy-*-macos-arm64.tar.gz*
+          path: mascotuscan-*-macos-arm64.tar.gz*
           if-no-files-found: error
 
   publish:
@@ -113,6 +113,6 @@ jobs:
         run: |
           v="${{ needs.verify.outputs.version }}"
           gh release create "v$v" dist/* \
-            --title "lucy $v" \
+            --title "mascotuscan $v" \
             --notes-file notes.md \
             --verify-tag

@@ -13,9 +13,9 @@ trap 'rm -rf "$WORK"' EXIT
 LOG="$WORK/shell.jsonl"
 export ZDOTDIR="$WORK"
 cat > "$WORK/.zshrc" <<EOF
-export LUCY_LOG="$LOG"
-export LUCY_MIN_SECONDS=2
-export LUCY_NO_AUTOSTART=1
+export MASCOTUSCAN_LOG="$LOG"
+export MASCOTUSCAN_MIN_SECONDS=2
+export MASCOTUSCAN_NO_AUTOSTART=1
 export CMUX_WORKSPACE_ID=WS-TEST
 export CMUX_SURFACE_ID=SF-TEST
 source "$ROOT/shell/pet.zsh"
@@ -105,10 +105,10 @@ else
   fail=1
 fi
 
-# --- caso 8: el autoarranque respeta LUCY_NO_AUTOSTART ---
+# --- caso 8: el autoarranque respeta MASCOTUSCAN_NO_AUTOSTART ---
 # pgrep devuelve 1 cuando no hay coincidencias, y con pipefail eso mata el script.
 # En la maquina del autor el asistente corre; en CI no. El `|| true` cubre ambos.
-count_pets() { pgrep -f 'lucy/bin/lucy' 2>/dev/null | wc -l | tr -d ' ' || true; }
+count_pets() { pgrep -f 'mascotuscan/bin/mascotuscan' 2>/dev/null | wc -l | tr -d ' ' || true; }
 before="$(count_pets)"
 run_zsh <<'EOS'
 true

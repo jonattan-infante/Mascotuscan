@@ -1,9 +1,9 @@
 # Versiones y aviso de actualización
 
 Contrato del producto, no de una plataforma. Lo implementan
-`Sources/LucyGlowKit/Model/Update.swift` (macOS) y
-`windows/lucy_win/update.py` (Windows), y los dos tienen los mismos casos de
-prueba: `Tests/LucyGlowKitTests/UpdateTests.swift` y `windows/tests/test_update.py`.
+`Sources/MascoTuscanKit/Model/Update.swift` (macOS) y
+`windows/mascotuscan_win/update.py` (Windows), y los dos tienen los mismos casos de
+prueba: `Tests/MascoTuscanKitTests/UpdateTests.swift` y `windows/tests/test_update.py`.
 Si una regla de aquí cambia, cambian los dos runtimes y los dos tests.
 
 Decisión y motivos: `docs/adr/0006`.
@@ -13,8 +13,8 @@ Decisión y motivos: `docs/adr/0006`.
 | Sitio | Rol |
 |---|---|
 | `VERSION` (raíz del repo) | fuente única, `X.Y.Z` en una línea |
-| `Sources/LucyGlowKit/Support/Paths.swift` `lucyGlowVersion` | copia que se compila en el binario de macOS |
-| `windows/lucy_win/__init__.py` `__version__` | copia que lee el paquete de Python |
+| `Sources/MascoTuscanKit/Support/Paths.swift` `mascoTuscanVersion` | copia que se compila en el binario de macOS |
+| `windows/mascotuscan_win/__init__.py` `__version__` | copia que lee el paquete de Python |
 | `CHANGELOG.md` primera sección `## [X.Y.Z]` | las notas de esa versión |
 | tag `vX.Y.Z` | el momento en que la versión existe para el mundo |
 
@@ -34,7 +34,7 @@ Una versión existe cuando hay un GitHub Release con su tag. Lo crea
 `.github/workflows/release.yml` al empujar `vX.Y.Z`, y solo si:
 
 1. el tag sin `v` es igual a `VERSION`;
-2. macOS compila en release y `lucy --version` responde ese número;
+2. macOS compila en release y `mascotuscan --version` responde ese número;
 3. los tests de Python del port pasan;
 4. el CHANGELOG tiene la sección de esa versión (son las notas del release).
 
@@ -53,12 +53,12 @@ notas está en [`tags.md`](tags.md); `scripts/check-tag.sh` lo verifica y
 |---|---|---|
 | macOS, `curl ... install.sh \| bash` | clona y compila | la del último release; sin releases o sin red, `main`, y lo dice |
 | macOS, `./install.sh --from-source` | compila el checkout | la que haya en el checkout |
-| macOS, `lucy update` | vuelve a correr el instalador de arriba | la del último release |
+| macOS, `mascotuscan update` | vuelve a correr el instalador de arriba | la del último release |
 | Windows, `python install.py` | registra hooks; corre desde el checkout | la del checkout |
 | Windows, `python install.py --update` | `git fetch --tags` + `git checkout vX.Y.Z` en el checkout, re-registra hooks, apaga la mascota vieja | la del último release |
 
-`LUCY_VERSION=vX.Y.Z` fija una versión en el instalador de macOS;
-`LUCY_VERSION=main` sigue la rama.
+`MASCOTUSCAN_VERSION=vX.Y.Z` fija una versión en el instalador de macOS;
+`MASCOTUSCAN_VERSION=main` sigue la rama.
 
 En Windows, `--update` se niega si el checkout tiene cambios sin commit: pisarle
 trabajo a alguien es peor que no actualizar. Si el directorio no es un clon de git,
@@ -68,13 +68,13 @@ imprime la URL del release.
 
 | Regla | Valor |
 |---|---|
-| Fuente remota | `GET https://api.github.com/repos/jonattan-infante/lucyglow/releases/latest`, campo `tag_name` |
+| Fuente remota | `GET https://api.github.com/repos/jonattan-infante/mascotuscan/releases/latest`, campo `tag_name` |
 | Sin autenticación | el límite es 60 consultas por hora por IP; a una por día sobra |
 | Timeout | 10 s |
 | Comparación | `X.Y.Z` numérica; el prefijo `v` se ignora; un prerelease (`0.3.0-beta.1`) no es versión y no se anuncia |
 | Primer intento | 30 s después de arrancar, para no competir con el saludo |
 | Reloj | cada 6 h el runtime se lo plantea; la consulta real ocurre como mucho una vez por 24 h |
-| Estado local | `~/.lucy/update.json` (`%USERPROFILE%\.lucy\update.json` en Windows) |
+| Estado local | `~/.mascotuscan/update.json` (`%USERPROFILE%\.mascotuscan\update.json` en Windows) |
 | Silencio | se anuncia una sola vez por versión nueva: cuando `latest > actual` y `latest != announced`. Reiniciar no repite el aviso; una versión aún más nueva sí se anuncia |
 | Apagado | `"checkUpdates": false` en `config.json` |
 | Hilo | nunca en el hilo de la UI, nunca en el camino de otro aviso |
@@ -82,7 +82,7 @@ imprime la URL del release.
 | Estado | mood `info`, burbuja normal, no pegajosa |
 | Voz | clase `updateAvailable` con marcador `{version}`; si el pack no la trae, texto neutro del programa |
 | Salida | el menú contextual ofrece "Actualizar a vX.Y.Z"; el texto neutro nombra el comando de la plataforma |
-| Para probar | `LUCY_UPDATE_URL=file:///ruta/latest.json` con `{"tag_name":"v9.9.9"}` reemplaza el endpoint |
+| Para probar | `MASCOTUSCAN_UPDATE_URL=file:///ruta/latest.json` con `{"tag_name":"v9.9.9"}` reemplaza el endpoint |
 
 Forma exacta del estado, la misma que escriben y leen ambos runtimes:
 

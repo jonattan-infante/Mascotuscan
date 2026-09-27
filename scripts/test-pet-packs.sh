@@ -2,7 +2,7 @@
 # Valida las mascotas del repositorio y la coherencia del marketplace.
 #
 # Es la revision automatica de un PR al marketplace. Sin esto, una entrada que
-# apunte a un paquete roto rompe `lucy install <id>` para todo el mundo, y
+# apunte a un paquete roto rompe `mascotuscan install <id>` para todo el mundo, y
 # nadie se entera hasta que alguien lo intenta.
 #
 #   ./scripts/test-pet-packs.sh            valida los packs locales y el indice
@@ -20,10 +20,10 @@ ok()    { printf '  ok   %s\n' "$1"; }
 bad()   { printf '  FALLA %s\n' "$1"; fail=1; }
 note()  { printf '       %s\n' "$1"; }
 
-BIN="$(swift build --show-bin-path 2>/dev/null)/lucy"
+BIN="$(swift build --show-bin-path 2>/dev/null)/mascotuscan"
 if [[ ! -x "$BIN" ]]; then
   swift build >/dev/null 2>&1 || { echo "no pude compilar para validar"; exit 1; }
-  BIN="$(swift build --show-bin-path)/lucy"
+  BIN="$(swift build --show-bin-path)/mascotuscan"
 fi
 
 echo "mascotas del repositorio:"
@@ -91,7 +91,7 @@ PY
 
 while IFS=$'\t' read -r id source path version; do
   [[ -z "$id" ]] && continue
-  if [[ "$source" == *"jonattan-infante/lucyglow"* ]]; then
+  if [[ "$source" == *"jonattan-infante/mascotuscan"* ]]; then
     dir="${path:-.}"
     if [[ ! -f "$dir/pet.json" ]]; then
       bad "$id apunta a $dir, que no existe en este repositorio"

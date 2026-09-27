@@ -1,13 +1,13 @@
 # ARCHITECTURE.md
 
-Cómo está construido LucyGlow. Router, no enciclopedia: cada sección apunta al
+Cómo está construido MascoTuscan. Router, no enciclopedia: cada sección apunta al
 archivo donde vive el detalle.
 
 ## Las dos ideas centrales
 
 **1. cmux ya sabe todo lo que pasa.** Qué agente trabaja, qué herramienta usa, qué
 puerto se abrió. Lo publica en un stream de eventos y en un socket de control.
-LucyGlow no observa el sistema: traduce lo que cmux ya dice.
+MascoTuscan no observa el sistema: traduce lo que cmux ya dice.
 
 **2. La mascota es un dato, no código.** El programa decide **cuándo** hablar y en
 qué estado está; un paquete instalable decide **cómo se ve y cómo habla**. Esa
@@ -80,7 +80,7 @@ Views/       Voice/          Model/
 | `PetTheme` | `Model/Mood.swift` | la mascota activa vista desde el dibujo: colores y sprites |
 | `Voice` | `Voice/Voice.swift` | frases de la mascota activa: generadas, con respaldo del pack |
 | `Registry` | `CLI/Registry.swift` | el índice del marketplace, con cache para funcionar sin red |
-| `Scaffold` | `CLI/Scaffold.swift` | lo que produce `lucy new`: un paquete **válido** desde el inicio |
+| `Scaffold` | `CLI/Scaffold.swift` | lo que produce `mascotuscan new`: un paquete **válido** desde el inicio |
 
 Contrato con los packs, en dos direcciones:
 
@@ -134,7 +134,7 @@ y revalida después de copiar**: nunca queda instalado algo que no carga.
 1. Un pack **no puede inventar un estado**. El vocabulario es del programa.
 2. `PetPack.load` es código defensivo: rutas con `..` prohibidas, colores
    validados, sprites que tienen que existir. Es la frontera del sistema.
-3. Las frases generadas viven **fuera** del pack (`~/.lucy/voices/<id>.json`):
+3. Las frases generadas viven **fuera** del pack (`~/.mascotuscan/voices/<id>.json`):
    actualizar un pack no las borra, y un pack del registro es de solo lectura.
 4. El prompt se **compone**: personalidad del pack + contrato del programa.
 5. Un renderer desconocido cae al vectorial y **avisa en el log**. Un campo
@@ -151,13 +151,13 @@ y revalida después de copiar**: nunca queda instalado algo que no carga.
     devuelve nil en las zonas transparentes, o la ventana se comería los clicks.
 14. El panel es `NSPanel` con `canBecomeKey = false`: nunca le roba el teclado a
     la terminal.
-15. Todo el estado en disco vive en `~/.lucy`. El repo no escribe ahí.
+15. Todo el estado en disco vive en `~/.mascotuscan`. El repo no escribe ahí.
 
 ## Preocupaciones transversales
 
 | Tema | Punto de entrada |
 |---|---|
-| Trazas y diagnóstico | `plog(...)` en `Support/Paths.swift`; sale a `~/.lucy/pet.log` |
+| Trazas y diagnóstico | `plog(...)` en `Support/Paths.swift`; sale a `~/.mascotuscan/pet.log` |
 | Ejecutar cmux | `cmuxJSON(...)` (espera respuesta) y `cmuxFire(...)` (dispara y olvida) |
 | Rutas en disco | `PetPaths` y `PetLibrary` |
 | Textos de cara al usuario | `Voice.phrase(...)` con respaldo del pack |

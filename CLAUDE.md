@@ -1,6 +1,6 @@
 # CLAUDE.md — router del repositorio
 
-LucyGlow: plataforma de mascotas de escritorio para tus agentes de IA. El
+MascoTuscan: plataforma de mascotas de escritorio para tus agentes de IA. El
 programa decide **cuándo** hablar; un paquete instalable decide **cómo se ve y
 cómo habla**. En macOS observa [cmux](https://cmux.com) y está en Swift, sin
 dependencias; en Windows observa Claude Code directamente.
@@ -30,8 +30,8 @@ dependencias; en Windows observa Claude Code directamente.
 make verify     # el gate: build + tests Swift + hooks de zsh + instalador + integridad
 make render     # dibuja cada estado de la mascota activa a PNG en ./render
 make run        # arranca en primer plano
-make install    # instala en ~/.lucy, con las mascotas incluidas
-make log        # sigue ~/.lucy/pet.log
+make install    # instala en ~/.mascotuscan, con las mascotas incluidas
+make log        # sigue ~/.mascotuscan/pet.log
 make tag        # publica la versión de VERSION: tag anotado y firmado + release por CI, solo desde main
 make next-version   # propone X.Y.Z desde los commits (Conventional Commits)
 make release-notes  # borrador de la sección del CHANGELOG
@@ -40,18 +40,18 @@ make release-notes  # borrador de la sección del CHANGELOG
 Comandos de mascota (el producto, no el build):
 
 ```bash
-lucy list                     # instaladas, con la activa marcada
-lucy use <id>                 # cambiar de mascota
-lucy search [texto]           # buscar en el marketplace
-lucy install <id|url|ruta>    # instalar; --use la activa, --force reemplaza
-lucy new <id> [--sprites]     # crear un paquete nuevo, ya válido
-lucy fork <origen> <nuevo>    # copia editable de una mascota existente
-lucy sprite <id> <estado> <f> # ponerle imagen; --dir <carpeta>, --clear
-lucy validate <ruta>          # revisar un paquete y explicar cada fallo
-lucy voice [<id>]             # que Claude Code le escriba las frases
-lucy info <id>
-lucy uninstall <id>
-lucy update [--check]         # reinstalar la última publicada; --check solo compara
+mascotuscan list                     # instaladas, con la activa marcada
+mascotuscan use <id>                 # cambiar de mascota
+mascotuscan search [texto]           # buscar en el marketplace
+mascotuscan install <id|url|ruta>    # instalar; --use la activa, --force reemplaza
+mascotuscan new <id> [--sprites]     # crear un paquete nuevo, ya válido
+mascotuscan fork <origen> <nuevo>    # copia editable de una mascota existente
+mascotuscan sprite <id> <estado> <f> # ponerle imagen; --dir <carpeta>, --clear
+mascotuscan validate <ruta>          # revisar un paquete y explicar cada fallo
+mascotuscan voice [<id>]             # que Claude Code le escriba las frases
+mascotuscan info <id>
+mascotuscan uninstall <id>
+mascotuscan update [--check]         # reinstalar la última publicada; --check solo compara
 ```
 
 `make verify` es el juez. Si pasa, el cambio es candidato; si no pasa, no existe.
@@ -66,7 +66,7 @@ lucy update [--check]         # reinstalar la última publicada; --check solo co
 3. **Nunca editar un pack marcado `.bundled`.** Se reemplaza al actualizar y el
    trabajo del usuario se perdería sin aviso: primero `fork`. Todo cambio al
    manifiesto se revalida y se revierte si dejaría el paquete inválido.
-4. **Las frases generadas van a `~/.lucy/voices/<id>.json`, nunca dentro del
+4. **Las frases generadas van a `~/.mascotuscan/voices/<id>.json`, nunca dentro del
    pack.** Actualizar un pack no puede borrarlas.
 5. **El prompt se compone**: personalidad del pack + contrato del programa. No
    meter personalidad en el código ni contrato en el pack.
@@ -87,7 +87,7 @@ lucy update [--check]         # reinstalar la última publicada; --check solo co
 14. **Nunca bloquear el hilo principal con `cmuxJSON`.** Es sincrónico: va en
     `DispatchQueue.global`.
 15. **Nunca escribir al disco del usuario desde el repo.** Todo el estado vive en
-    `~/.lucy`.
+    `~/.mascotuscan`.
 16. **Nunca dejar que un fallo sea silencioso.** Sin mascota instalada, sin socket
     o sin frases, se dice en pantalla.
 17. **Nunca arte de personajes con dueño**, ni en los packs incluidos ni aceptado
@@ -144,27 +144,27 @@ marca con ⚠️ y fecha.
 Para lo visual, `make render` es la forma de verificar: escribe un PNG por estado
 de la mascota activa, sin abrir ventana. No hace falta pedirle capturas al usuario.
 
-Para un paquete, `lucy validate` explica cada fallo. Úsalo antes de afirmar
+Para un paquete, `mascotuscan validate` explica cada fallo. Úsalo antes de afirmar
 que un pack está bien.
 
 ## Mapa del código
 
 | Ruta | Qué vive ahí |
 |---|---|
-| `Sources/lucy/main.swift` | arranque, señales, `--render`, despacho de subcomandos |
-| `Sources/LucyGlowKit/Model/PetPack.swift` | el formato de paquete y su validación |
-| `Sources/LucyGlowKit/Model/PetLibrary.swift` | instaladas, activa, instalar, quitar |
-| `Sources/LucyGlowKit/Model/Mood.swift` | los seis estados y `PetTheme` |
-| `Sources/LucyGlowKit/Model/Update.swift` | semver, estado y regla de silencio del aviso de versión |
-| `Sources/LucyGlowKit/CLI/` | subcomandos, scaffolding y registro del marketplace |
-| `Sources/LucyGlowKit/Voice/` | frases de la mascota activa y composición del prompt |
-| `Sources/LucyGlowKit/Views/` | renderer vectorial, sprites, burbuja, panel de estado |
-| `Sources/LucyGlowKit/Controller/EventSource.swift` | contrato `EventSource` y `NormalizedEvent` |
-| `Sources/LucyGlowKit/Controller/Sources/` | adapters: `CmuxEventSource`, `ShellHookEventSource`, `WmuxEventSource` (esqueleto) |
-| `Sources/LucyGlowKit/Controller/` | orquestador: ingiere eventos normalizados, decide mood y texto |
-| `Sources/LucyGlowKit/Controller/PetController+Actions.swift` | acciones hacia cmux: saltar de workspace, responder permiso/pregunta |
-| `Sources/LucyGlowKit/Model/PendingRequest.swift` | un permiso/pregunta sin responder, por `requestId` |
-| `Sources/LucyGlowKit/Support/` | rutas, puente con el CLI de cmux, tailer de archivos, formateo |
+| `Sources/mascotuscan/main.swift` | arranque, señales, `--render`, despacho de subcomandos |
+| `Sources/MascoTuscanKit/Model/PetPack.swift` | el formato de paquete y su validación |
+| `Sources/MascoTuscanKit/Model/PetLibrary.swift` | instaladas, activa, instalar, quitar |
+| `Sources/MascoTuscanKit/Model/Mood.swift` | los seis estados y `PetTheme` |
+| `Sources/MascoTuscanKit/Model/Update.swift` | semver, estado y regla de silencio del aviso de versión |
+| `Sources/MascoTuscanKit/CLI/` | subcomandos, scaffolding y registro del marketplace |
+| `Sources/MascoTuscanKit/Voice/` | frases de la mascota activa y composición del prompt |
+| `Sources/MascoTuscanKit/Views/` | renderer vectorial, sprites, burbuja, panel de estado |
+| `Sources/MascoTuscanKit/Controller/EventSource.swift` | contrato `EventSource` y `NormalizedEvent` |
+| `Sources/MascoTuscanKit/Controller/Sources/` | adapters: `CmuxEventSource`, `ShellHookEventSource`, `WmuxEventSource` (esqueleto) |
+| `Sources/MascoTuscanKit/Controller/` | orquestador: ingiere eventos normalizados, decide mood y texto |
+| `Sources/MascoTuscanKit/Controller/PetController+Actions.swift` | acciones hacia cmux: saltar de workspace, responder permiso/pregunta |
+| `Sources/MascoTuscanKit/Model/PendingRequest.swift` | un permiso/pregunta sin responder, por `requestId` |
+| `Sources/MascoTuscanKit/Support/` | rutas, puente con el CLI de cmux, tailer de archivos, formateo |
 | `pets/` | mascotas incluidas: `astro`, `gatito`, `cangrejo` y `llama` |
 | `windows/` | port para Windows en Python: mismos packs, mismo contrato de voz y de versión |
 | `VERSION` | la versión del producto; `CHANGELOG.md` lleva sus notas |

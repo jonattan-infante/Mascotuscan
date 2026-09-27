@@ -1,5 +1,5 @@
 # El contrato de docs/reference/versioning.md, caso por caso. Los mismos casos
-# viven en Tests/LucyGlowKitTests/UpdateTests.swift: si se agrega uno aqui, va alla.
+# viven en Tests/MascoTuscanKitTests/UpdateTests.swift: si se agrega uno aqui, va alla.
 
 import os
 import sys
@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from lucy_win import update  # noqa: E402
+from mascotuscan_win import update  # noqa: E402
 
 
 class SemverTests(unittest.TestCase):
@@ -34,7 +34,7 @@ class SemverTests(unittest.TestCase):
 
 class ResponseTests(unittest.TestCase):
     def test_saca_la_version_del_tag_name(self):
-        data = b'{"tag_name":"v0.3.0","name":"lucy 0.3.0"}'
+        data = b'{"tag_name":"v0.3.0","name":"mascotuscan 0.3.0"}'
         self.assertEqual(update.parse_latest(data), (0, 3, 0))
 
     def test_respuesta_sin_tag_no_es_version(self):
@@ -120,7 +120,7 @@ class CheckerTests(unittest.TestCase):
     def test_lee_de_un_archivo_local_y_entrega_una_sola_vez(self):
         latest = Path(tempfile.mkdtemp()) / "latest.json"
         latest.write_text('{"tag_name": "v9.9.9"}', encoding="utf-8")
-        os.environ["LUCY_UPDATE_URL"] = latest.as_uri()
+        os.environ["MASCOTUSCAN_UPDATE_URL"] = latest.as_uri()
         try:
             c = update.Checker()
             c.start()
@@ -128,7 +128,7 @@ class CheckerTests(unittest.TestCase):
             self.assertEqual(c.take(), ((9, 9, 9), None))
             self.assertIsNone(c.take())
         finally:
-            del os.environ["LUCY_UPDATE_URL"]
+            del os.environ["MASCOTUSCAN_UPDATE_URL"]
 
 
 if __name__ == "__main__":

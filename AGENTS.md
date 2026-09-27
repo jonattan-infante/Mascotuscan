@@ -57,7 +57,7 @@ make render          # ./render/todos.png, panel.png, burbuja-*.png
 Y después abre las imágenes y las revisa contra esta lista:
 
 - Los 6 estados se distinguen entre sí de un vistazo.
-- Si el cambio toca un pack: `lucy validate` pasa, y `make render` con esa
+- Si el cambio toca un pack: `mascotuscan validate` pasa, y `make render` con esa
   mascota activa muestra sus colores, no los de otra.
 - Ningún texto se corta ni se sale de su tarjeta (el defecto de `docs/adr/0003`
   se detectó exactamente así).

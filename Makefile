@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 SHELL := /bin/bash
-PREFIX ?= $(HOME)/.lucy
-BIN := $(PREFIX)/bin/lucy
+PREFIX ?= $(HOME)/.mascotuscan
+BIN := $(PREFIX)/bin/mascotuscan
 
 .PHONY: help build release test test-shell test-windows packs packs-remote render verify install uninstall run stop restart log clean fmt pr merge tag next-version release-notes
 
@@ -39,7 +39,7 @@ packs-remote: ## Igual, pero tambien clona y valida las mascotas de terceros
 	./scripts/test-pet-packs.sh --remote
 
 render: ## Dibuja cada estado a PNG en ./render para revisarlo a ojo
-	swift build && ./.build/debug/lucy --render ./render
+	swift build && ./.build/debug/mascotuscan --render ./render
 	@echo "abre ./render/todos.png y ./render/panel.png"
 
 verify: build test test-shell test-windows ## El gate completo: lo que CI corre
@@ -47,17 +47,17 @@ verify: build test test-shell test-windows ## El gate completo: lo que CI corre
 	@echo "verificacion completa: compila, tests de logica, hooks de zsh,"
 	@echo "instalador, integridad del repo, mascotas del marketplace y port de Windows"
 
-install: release ## Instala en ~/.lucy y engancha el shell
+install: release ## Instala en ~/.mascotuscan y engancha el shell
 	./install.sh --from-source
 
 uninstall: ## Quita el asistente y su enganche del shell
 	./install.sh --uninstall
 
 run: ## Arranca el asistente en primer plano (Ctrl-C para salir)
-	swift build && ./.build/debug/lucy
+	swift build && ./.build/debug/mascotuscan
 
 stop: ## Detiene el asistente
-	-pkill -f 'lucy' 2>/dev/null || true
+	-pkill -f 'mascotuscan' 2>/dev/null || true
 
 restart: stop ## Reinstala el binario y reinicia
 	@sleep 1
@@ -81,7 +81,7 @@ merge: ## Deja la rama actual en auto-merge (entra sola cuando CI pase)
 # Publicar es un tag, y el tag tiene reglas (docs/reference/tags.md): anotado,
 # firmado, con las notas del CHANGELOG en el mensaje, desde main al dia. Se
 # verifica todo ANTES de empujar; un tag empujado ya no se mueve.
-GH_WEB := https://github.com/jonattan-infante/lucyglow
+GH_WEB := https://github.com/jonattan-infante/mascotuscan
 
 next-version: ## Propone la proxima version a partir de los commits desde el ultimo tag
 	@./scripts/next-version.sh
@@ -96,7 +96,7 @@ tag: ## Publica la version de VERSION: tag anotado y firmado desde main al dia; 
 	@test -z "$$(git status --porcelain)" || { echo "hay cambios sin commit"; exit 1; }
 	@v="$$(tr -d '[:space:]' < VERSION)"; \
 	  git rev-parse -q --verify "refs/tags/v$$v" >/dev/null && { echo "v$$v ya existe: los tags no se mueven; sube la version"; exit 1; }; \
-	  { echo "lucy $$v"; echo; ./scripts/changelog-section.sh "$$v"; } > .git/TAG_MSG || exit 1; \
+	  { echo "mascotuscan $$v"; echo; ./scripts/changelog-section.sh "$$v"; } > .git/TAG_MSG || exit 1; \
 	  git tag -s "v$$v" -F .git/TAG_MSG || { echo "no pude firmar: configura la firma, ver docs/reference/tags.md"; exit 1; }; \
 	  ./scripts/check-tag.sh "v$$v" --on origin/main || { git tag -d "v$$v" >/dev/null; echo "tag borrado en local; no se empujo nada"; exit 1; }; \
 	  git push origin "v$$v" && \

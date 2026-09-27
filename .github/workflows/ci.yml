@@ -45,7 +45,7 @@ jobs:
         run: swift build -c release
 
       - name: El binario responde
-        run: ./$(swift build -c release --show-bin-path | sed "s|$PWD/||")/lucy --version
+        run: ./$(swift build -c release --show-bin-path | sed "s|$PWD/||")/mascotuscan --version
 
   # Lo que corre en el shell del usuario y lo que toca su disco. Job aparte
   # porque cuando falla, falla por razones distintas al codigo Swift.
@@ -76,7 +76,7 @@ jobs:
 
   # La revision automatica de un PR al marketplace. Valida las mascotas de este
   # repo y ademas clona y valida las que viven en repositorios de terceros: una
-  # entrada que apunte a un paquete roto rompe `lucy install` para todos.
+  # entrada que apunte a un paquete roto rompe `mascotuscan install` para todos.
   packs:
     name: mascotas y marketplace
     runs-on: macos-14
@@ -126,7 +126,7 @@ jobs:
       - name: Dibujar los estados
         run: |
           swift build
-          ./.build/debug/lucy --render ./render
+          ./.build/debug/mascotuscan --render ./render
           ls -la render/
 
       - uses: actions/upload-artifact@v4

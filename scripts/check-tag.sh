@@ -53,10 +53,10 @@ subject="$(printf '%s\n' "$msg" | head -1)"
 body="$(printf '%s\n' "$msg" | tail -n +2 | sed '/^[[:space:]]*$/d')"
 
 # 4. mensaje
-if [[ "$subject" == "lucy $version" ]]; then
+if [[ "$subject" == "mascotuscan $version" ]]; then
   ok "primera linea: '$subject'"
 else
-  bad "la primera linea debe ser 'lucy $version'; es '$subject'"
+  bad "la primera linea debe ser 'mascotuscan $version'; es '$subject'"
 fi
 if [[ -n "$body" ]]; then
   ok "trae notas ($(printf '%s\n' "$body" | wc -l | tr -d ' ') lineas)"

@@ -29,7 +29,7 @@ ese payload — sale de `feed.list`, que no redacta nada. `feed.list` devuelve
 **todos** los workstreams activos, no solo los de esta mascota: el código
 descarta de inmediato todo ítem que no matchee el `requestId` pendiente
 (`PetController.extractPendingContent`) y **nunca loguea ni persiste** ese
-contenido a disco (ni `pet.log` ni `~/.lucy`).
+contenido a disco (ni `pet.log` ni `~/.mascotuscan`).
 
 Formas verificadas de un ítem de `feed.list` (2026-09-17, valores reales
 reemplazados por sintéticos):
