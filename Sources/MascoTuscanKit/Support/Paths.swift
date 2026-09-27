@@ -2,7 +2,7 @@
 
 import Foundation
 
-public let mascoTuscanVersion = "0.3.0"
+public let mascoTuscanVersion = "0.4.0"
 
 let fm = FileManager.default
 let homeURL = fm.homeDirectoryForCurrentUser
