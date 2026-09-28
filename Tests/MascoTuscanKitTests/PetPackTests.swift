@@ -228,4 +228,67 @@ final class PetPackTests: XCTestCase {
         XCTAssertTrue("\(PackError.escapingPath("../x"))".contains(".."))
         XCTAssertTrue("\(PackError.unknownState("x"))".contains("idle"))
     }
+
+    // MARK: recorrer la pantalla (roam)
+
+    private func writeRoamPack(_ roam: String, files: [String] = ["sprites/arranque.png", "sprites/rueda.png"]) throws {
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("sprites"),
+                                                withIntermediateDirectories: true)
+        for f in files { try write(f, "x") }
+        try write("pet.json", manifest(extra: "\"roam\": \(roam)"))
+        try write("persona.md", "Eres una mascota de prueba. Hablas corto.")
+    }
+
+    func testSinRoamSeQuedaEnSuLugar() throws {
+        try writeValidPack()
+        guard case .success(let p) = PetPack.load(from: dir) else { return XCTFail("deberia cargar") }
+        XCTAssertNil(p.roam)
+    }
+
+    func testRoamValidoSeCarga() throws {
+        try writeRoamPack(#"{"start": "sprites/arranque.png", "loop": "sprites/rueda.png", "speed": 73}"#)
+        guard case .success(let p) = PetPack.load(from: dir) else { return XCTFail("deberia cargar") }
+        XCTAssertEqual(p.roam?.speed, 73)
+        XCTAssertEqual(p.roam?.loop.lastPathComponent, "rueda.png")
+        XCTAssertEqual(p.roam?.start?.lastPathComponent, "arranque.png")
+    }
+
+    /// El giro de arranque es opcional: sin el, arranca y frena en seco.
+    func testRoamSinArranqueSeCarga() throws {
+        try writeRoamPack(#"{"loop": "sprites/rueda.png", "speed": 50}"#)
+        guard case .success(let p) = PetPack.load(from: dir) else { return XCTFail("deberia cargar") }
+        XCTAssertNil(p.roam?.start)
+    }
+
+    func testRoamSinLoopFalla() throws {
+        try writeRoamPack(#"{"start": "sprites/arranque.png", "speed": 73}"#)
+        guard case .badRoam(let why) = loadError() else { return XCTFail("deberia fallar") }
+        XCTAssertTrue(why.contains("roam.loop"), why)
+    }
+
+    func testRoamConRutaQueSeSaleDelPaqueteFalla() throws {
+        try writeRoamPack(#"{"loop": "../fuera.png", "speed": 73}"#)
+        guard case .escapingPath = loadError() else { return XCTFail("deberia fallar") }
+    }
+
+    func testRoamConArchivoQueNoExisteFalla() throws {
+        try writeRoamPack(#"{"loop": "sprites/no-esta.png", "speed": 73}"#)
+        guard case .badRoam(let why) = loadError() else { return XCTFail("deberia fallar") }
+        XCTAssertTrue(why.contains("no existe"), why)
+    }
+
+    func testRoamConVelocidadInvalidaFalla() throws {
+        for speed in ["0", "1000", "\"rapido\"", "-5"] {
+            try writeRoamPack(#"{"loop": "sprites/rueda.png", "speed": "# + speed + "}")
+            guard case .badRoam(let why) = loadError() else {
+                return XCTFail("speed \(speed) deberia fallar")
+            }
+            XCTAssertTrue(why.contains("roam.speed"), why)
+        }
+    }
+
+    func testRoamQueNoEsObjetoFalla() throws {
+        try writeRoamPack("true")
+        guard case .badRoam = loadError() else { return XCTFail("deberia fallar") }
+    }
 }

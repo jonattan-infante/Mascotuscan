@@ -320,6 +320,51 @@ repo tenga forma de credencial.
 Lo que falta verificar en GitHub está en `docs/reference/claude-revision.md`
 §Sin verificar todavía.
 
+## Animaciones, recorrer la pantalla y celebrar al terminar (`docs/adr/0013`)
+
+Pedido del autor, 2026-09-27: mejorar las animaciones de sus mascotas `astro` y
+`bb8`. `bb8` no está en el repo: es un pack local suyo (`"license": "personal"`)
+hecho con fotos de BB-8. Las fotos son de Disney/Lucasfilm y el repo es público,
+así que **ese arte no entra** (límite 17); vive en
+`~/Documents/bb8-mascota-local/` con sus generadores, y se regenera idéntico
+byte a byte (`cmp`). Lo que sí entró al repo es genérico:
+
+- `vector:ball` con dos movimientos: quieto (la cabeza mira alrededor con
+  pausas) y rodando (paneles barridos hacia quien mira). Arregla los aros de la
+  espalda que se pintaban adelante. `floats`/`hop`: una bola no flota. El droide
+  y la figura encapuchada salen idénticos byte a byte.
+- Bloque `roam` en `pet.json`: con trabajo rueda hasta el borde, vuelve en
+  espejo y al terminar regresa a su lugar. Se detiene con el mouse sobre ella
+  o sobre su burbuja, y en `done`. Las cuatro decisiones de comportamiento son
+  del autor (borde, espejo, volver, por pack).
+- 2026-09-28, "ya no rueda": la primera versión también se detenía en
+  `attention`. Claude Code lo avisa a los 60 s de cada turno sin respuesta y la
+  sesión se queda así hasta que le escribes (trampa 20): con varias abiertas no
+  rodaba nunca. Captura de la ventana: el "!" de `attention` sobre BB-8 quieta.
+- Cada imagen animada empieza en su primer cuadro al aparecer (`SpriteClock`):
+  así `done` puede tener un gesto de una sola vez (la flamita de su BB-8).
+- `Sprite` lee con ImageIO: cada cuadro se decodifica una vez, al tamaño en que
+  se dibuja, y dura lo que declara. Con `NSBitmapImageRep`, `sample` mostró 226
+  de ~515 muestras activas del hilo principal descomprimiendo el cuadro, y todos
+  los cuadros de un PNG animado duraban lo del primero.
+
+```
+make verify (rama del roam)     -> 189 tests Swift, 0 fallos (+ 61 Python)
+  BallRendererTests 9, RoamTests 13, CelebrarAlTerminarTests 4, SpriteTests 7,
+  PetPackTests +8 (roam)
+mutación: "no detenerse con el mouse" -> 4 tests en rojo
+"ya no rueda": regla vieja contra QuietaSoloSiLaVasATocarTests -> 3 en rojo;
+  con el arreglo, 4 en verde
+banco aislado, 300 dibujos a 30 fps  -> rodar 4.51 % -> 0.23 % de un núcleo
+mascota real rodando, 20 s          -> 1.44 s de CPU = 7.2 % (tiempo acumulado)
+capturas de la pantalla real        -> rueda ~77 pt/s (73 declarados), espeja
+                                       hacia la izquierda, la burbuja lo sigue,
+                                       se detiene en done y saca la flamita
+```
+
+⚠️ Sin verificar: que vuelva a su lugar al terminar lo muestran los tests y el
+modelo, no una captura (cuando la sesión termina ya no hay quien capture).
+
 ## Próximo paso
 
 **Revisor de PRs (F7).** Mergear, y en *Settings > Branches* agregar
@@ -330,6 +375,14 @@ del merge no tiene el status: se le pone `claude:revisar`.
 
 **Harness de issues (F6).** Probar un error evidente real (PR, CI y ahora la
 revisión, los tres por `workflow_dispatch`) y un rechazo de `implementar`.
+
+**Mascota que recorre la pantalla (F8).** Dos PR apilados, con CI en verde: #25
+(animaciones del `vector:ball`) y #26 (recorrer la pantalla + celebrar +
+`Sprite`, base #25). #25 mergeado; `main` fusionado en #26. En #26 además: ya no
+se detiene en `attention` (trampa 20). Falta aprobar el revisor, comprobar en
+pantalla que vuelve a rodar, y mergear. Después,
+el mismo `roam` en `windows/` (PR2 de F8). El autor quiere lanzarlo: va en una
+versión después de `0.4.0`.
 
 **Renombrado (F5 en `EXECUTION-PLAN.md`).** Hechos: repo renombrado, PR #17
 mergeado con CI en verde, versión `0.4.0` preparada. Falta, en este orden:
@@ -375,6 +428,7 @@ Windows real (R9), y marcar el job `port de Windows` como check obligatorio (B13
 | 2026-09-17 | Reglas de tags obligatorias en `CLAUDE.md` para cualquier agente de IA (PR #7). Primer tag bajo las reglas (`v0.2.1`) reveló un bug real de CI con tags anotados; corregido y publicado como `v0.2.2` (PR #9), con el ciclo de `lucy update` probado de punta a punta contra el release real |
 | 2026-09-27 | Renombrado de LucyGlow a MascoTuscan, comando `mascotuscan` (`docs/adr/0010`). Migración encadenada `~/.lucy`/`~/.cmux-pet`, y reemplazo de los enganches viejos en el zshrc y en los hooks de Claude Code |
 | 2026-09-27 | Harness de issues: Claude evalúa con aprobación, un error evidente termina en PR, uno estructural en diagnóstico con confirmación; reglas fijas y escaneo de secretos en `scripts/issue-harness.py` (`docs/adr/0011`). Sin correr aún en GitHub |
+| 2026-09-27 | Animaciones del `vector:ball`, `roam` (recorrer la pantalla, `docs/adr/0013`), celebrar al terminar y `Sprite` por ImageIO (de 4.51 % a 0.23 % de CPU al dibujar) |
 | 2026-09-28 | Harness de issues probado en GitHub con #20, #21 y #22 (#23 con lo que salió de ahí). Respuesta según el tipo de issue y plantillas. Revisor de PRs bloqueante con status `claude/revision` (`docs/adr/0012`), sin correr aún en GitHub |
 
 ## Trampas que ya costaron tiempo
@@ -423,6 +477,24 @@ No volver a caer en estas. Todas están documentadas con evidencia en
     quedan cosas apuntando al nombre viejo: el `source` en el zshrc y los hooks
     en el `settings.json` de Claude Code. El renombrado de `docs/adr/0007` no
     las tocó; `docs/adr/0010` sí.
+
+16. **`FileManager.homeDirectoryForCurrentUser` ignora `$HOME`.** Aislar una prueba
+    con `HOME=/otra/carpeta` no aísla nada: escribe en el `~/.mascotuscan` real.
+17. **El `%cpu` de `ps` en macOS es un promedio que decae en un minuto**, no el
+    consumo de ahora: justo después de arrancar incluye el arranque. Para medir,
+    tiempo de CPU acumulado (`ps -o time=`) al inicio y al final de un intervalo.
+18. **`NSBitmapImageRep` con PNG animado**: descomprime el cuadro en cada dibujo y
+    da a todos los cuadros la duración del primero. `Sprite` usa ImageIO.
+19. **`mascotuscan install --use` manda `SIGTERM` a la mascota en marcha**, y la
+    próxima shell (incluidas las de un agente, que cargan el perfil) arranca la
+    instalada. Para probar un binario de una rama: correrlo desde una ruta que
+    contenga `mascotuscan/bin/mascotuscan`, así el autoarranque no pone otra.
+20. **`attention` no quiere decir "te necesita ahora".** Claude Code manda la
+    notificación 60 s después de cada turno sin respuesta (en `pet.log`, `done`
+    y `attention` de la misma sesión a 60 s exactos), y `attentionSessions` la
+    guarda hasta que le vuelves a escribir: la barrida solo mira `activities`.
+    Con varias sesiones abiertas casi nunca está vacío. Nada que deba soltarse
+    solo puede depender de ese conjunto.
 
 ## Checklist de fin de sesión
 
