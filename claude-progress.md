@@ -6,7 +6,7 @@
 
 ## Estado verificado
 
-Fecha: **2026-09-27** (renombrado a MascoTuscan, ver su sección abajo; lo anterior es del 2026-09-17)
+Fecha: **2026-09-28** (harness de Claude y revisor de PRs, ver sus secciones abajo; renombrado del 2026-09-27; lo anterior es del 2026-09-17)
 
 El proyecto es una **plataforma de mascotas con dos runtimes**: macOS en Swift y
 Windows en Python (`windows/`). Desde esta sesión la **versión es del producto**
@@ -280,17 +280,62 @@ lleva el resumen y las notas de Claude), y unas comillas escapadas salían con l
 barra. Lo que falta verificar está en `docs/reference/claude-issues.md`
 §Sin verificar todavía.
 
+## Respuestas concretas y revisor de PRs (`docs/adr/0012`)
+
+Pedido del autor, 2026-09-28: que las respuestas del bot en issues sean
+concretas (una pregunta, la explicación directa; si falta información, la
+plantilla que tiene que seguir quien lo abre), y un agente que revise seguridad
+y calidad de cada PR y que bloquee el merge.
+
+Issues: `comentario` arma una forma por tipo (`docs/reference/claude-issues.md`
+§Qué responde). El diagnóstico tiene un campo nuevo, `respuesta`. Plantillas en
+`.github/ISSUE_TEMPLATE/` (`error.md`, `mejora.md`).
+
+PRs: `claude-revision.yml` + `scripts/revision-harness.py`. Claude devuelve
+hallazgos con severidad; el harness valida que el veredicto coincida, suma las
+credenciales agregadas en el diff y pone el status `claude/revision`, en
+`failure` si hay algo crítico o alto. El escaneo de secretos y la limpieza de
+texto pasaron a `scripts/harness_comun.py`, compartido por los dos harness.
+
+```
+./scripts/test-issue-harness.sh    -> 106 tests OK (60 de issues, 46 del revisor)
+actionlint claude-issues.yml claude-revision.yml release.yml -> limpio
+test-repo-integrity.sh             -> ok, CLAUDE.md en 195 lineas
+make test-windows                  -> 61 tests OK
+test-release-tooling.sh            -> ok
+simulacion local del job revisar contra un PR hostil:
+  sensible sin aprobacion  -> "toca archivos sensibles y esta corrida no espero tu aprobacion", sale 1
+  token tras "++ y"        -> hallazgo critico en codigo.py:3; la linea "++" no oculto nada
+  CLAUDE.md y .claude/     -> renombrados a .pr
+  enlace a /etc/hostname   -> reemplazado por un texto con el destino
+  Claude "cambios" + token -> estado=failure "Bloquea el merge: 1 crítico, 1 medio"
+  registro con el token    -> no se sube; el comentario lo dice
+```
+
+Encontrado de paso: `test_issue_harness.py` tenía escrita entera una cabecera
+de llave privada, y cualquier PR que tocara ese archivo habría quedado
+bloqueado. Ahora se arma por partes, y un test comprueba que ningún archivo del
+repo tenga forma de credencial.
+
+Lo que falta verificar en GitHub está en `docs/reference/claude-revision.md`
+§Sin verificar todavía.
+
 ## Próximo paso
 
-**Harness de issues (F6).** Mergear las mejoras de las corridas reales. Probar
-un error evidente real (PR y CI por `workflow_dispatch`) y un rechazo de
-`implementar`. Cerrar los issues de prueba #20, #21 y #22.
+**Revisor de PRs (F7).** Mergear, y en *Settings > Branches* agregar
+`claude/revision` como check obligatorio de `main` (GitHub lo ofrece después de
+verlo una vez). Verificar con un PR real los cuatro puntos de
+`docs/reference/claude-revision.md` §Sin verificar todavía. Un PR abierto antes
+del merge no tiene el status: se le pone `claude:revisar`.
+
+**Harness de issues (F6).** Probar un error evidente real (PR, CI y ahora la
+revisión, los tres por `workflow_dispatch`) y un rechazo de `implementar`.
 
 **Renombrado (F5 en `EXECUTION-PLAN.md`).** Hechos: repo renombrado, PR #17
 mergeado con CI en verde, versión `0.4.0` preparada. Falta, en este orden:
 
-1. Mergear el PR de `0.4.0` y, desde `main` al día, `make tag`. Hasta que exista
-   ese release, `curl ... | bash` falla (R12).
+1. Desde `main` al día, `make tag` (el PR de `0.4.0` ya está mergeado, #18).
+   Hasta que exista ese release, `curl ... | bash` falla (R12).
 2. En la máquina del autor: `lucy update`, y confirmar que `~/.lucy` pasó a
    `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que
    `mascotuscan --version` responde. Si `~/.lucy/bin` está en el `PATH`, cambiarlo.
@@ -330,6 +375,7 @@ Windows real (R9), y marcar el job `port de Windows` como check obligatorio (B13
 | 2026-09-17 | Reglas de tags obligatorias en `CLAUDE.md` para cualquier agente de IA (PR #7). Primer tag bajo las reglas (`v0.2.1`) reveló un bug real de CI con tags anotados; corregido y publicado como `v0.2.2` (PR #9), con el ciclo de `lucy update` probado de punta a punta contra el release real |
 | 2026-09-27 | Renombrado de LucyGlow a MascoTuscan, comando `mascotuscan` (`docs/adr/0010`). Migración encadenada `~/.lucy`/`~/.cmux-pet`, y reemplazo de los enganches viejos en el zshrc y en los hooks de Claude Code |
 | 2026-09-27 | Harness de issues: Claude evalúa con aprobación, un error evidente termina en PR, uno estructural en diagnóstico con confirmación; reglas fijas y escaneo de secretos en `scripts/issue-harness.py` (`docs/adr/0011`). Sin correr aún en GitHub |
+| 2026-09-28 | Harness de issues probado en GitHub con #20, #21 y #22 (#23 con lo que salió de ahí). Respuesta según el tipo de issue y plantillas. Revisor de PRs bloqueante con status `claude/revision` (`docs/adr/0012`), sin correr aún en GitHub |
 
 ## Trampas que ya costaron tiempo
 

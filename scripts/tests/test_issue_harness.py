@@ -21,6 +21,7 @@ def diagnostico(**cambios):
         "alcance": "evidente",
         "confianza": "alta",
         "resumen": "El panel corta el nombre del workspace.",
+        "respuesta": "",
         "causa": "Format.truncate recorta un caracter de mas.",
         "evidencia": [{"archivo": "Sources/MascoTuscanKit/Support/Format.swift",
                        "lineas": "40-44", "observacion": "usa < en vez de <="}],
@@ -79,6 +80,16 @@ class ValidarTests(unittest.TestCase):
     def test_evidencia_mal_formada(self):
         errores = h.validar_diagnostico(diagnostico(evidencia=[{"archivo": "a.swift"}]))
         self.assertTrue(any(e.startswith("evidencia[0]") for e in errores))
+
+    def test_una_pregunta_necesita_respuesta(self):
+        errores = h.validar_diagnostico(diagnostico(tipo="pregunta", alcance="ninguno"))
+        self.assertIn("respuesta: una pregunta necesita su respuesta directa", errores)
+        self.assertEqual(h.validar_diagnostico(diagnostico(
+            tipo="pregunta", alcance="ninguno", respuesta="Usa mascotuscan use astro.")), [])
+
+    def test_falta_info_dice_que_falta(self):
+        errores = h.validar_diagnostico(diagnostico(tipo="falta-info", alcance="ninguno"))
+        self.assertIn("preguntas: falta-info tiene que decir que informacion falta", errores)
 
     def test_implementacion_valida_y_sobrante(self):
         self.assertEqual(h.validar_implementacion(implementacion()), [])
@@ -190,8 +201,10 @@ class SecretosTests(unittest.TestCase):
         self.assertEqual(hallazgos, ["x:1: contiene el valor de GITHUB_TOKEN"])
 
     def test_patrones_conocidos(self):
+        # Armadas por partes: escritas enteras, este archivo tendria la forma de
+        # una credencial y el revisor de PRs bloquearia cualquier cambio suyo.
         for muestra in ("ghp_" + "a" * 36, "github_pat_" + "b" * 30,
-                        "-----BEGIN OPENSSH PRIVATE KEY-----", "AKIA" + "A" * 16):
+                        "-----BEGIN OPENSSH " + "PRIVATE KEY-----", "AKIA" + "A" * 16):
             self.assertTrue(h.buscar_secretos([("x", muestra)], {}), muestra)
 
     def test_texto_limpio_pasa(self):
@@ -240,7 +253,7 @@ class TextoTests(unittest.TestCase):
         texto = h.comentario(diagnostico(resumen="Avisar a @alguien"), "confirmar",
                              ["cambia un contrato de docs/reference/"],
                              "https://github.com/o/r/actions/runs/1", "abcdef1234567890")
-        self.assertIn("| Ruta del harness | **confirmar** |", texto)
+        self.assertIn("· ruta del harness **confirmar**", texto)
         self.assertIn("- cambia un contrato de docs/reference/", texto)
         self.assertIn("aprueba el job `implementar` en [el run](https://github.com/o/r/actions/runs/1)", texto)
         self.assertIn("`@alguien`", texto)
@@ -362,6 +375,58 @@ class EsquemaTests(unittest.TestCase):
             self.assertIn(regla, deny)
         for nombre in h.INSTRUCCIONES_DE_AGENTES:
             self.assertIn(f"Edit(**/{nombre})", deny)
+
+
+class FormaDelComentarioTests(unittest.TestCase):
+    """ Cada tipo de issue recibe su forma de respuesta; solo un error o una
+    mejora recibe el diagnostico completo. """
+    RUN = "https://github.com/o/r/actions/runs/1"
+    PLANTILLA = "## Qué pasó\n\n## Cómo reproducirlo\n\n```\n(pega aquí)\n```"
+
+    def test_pregunta_recibe_una_respuesta_directa(self):
+        d = diagnostico(tipo="pregunta", alcance="ninguno", respuesta="Corre `mascotuscan use astro`.",
+                        evidencia=[{"archivo": "Sources/MascoTuscanKit/CLI/PetCommands.swift",
+                                    "lineas": "123-129", "observacion": "use"}])
+        texto = h.comentario(d, "comentar", ["x"], self.RUN, "abc")
+        self.assertTrue(texto.startswith("## Respuesta\n\nCorre `mascotuscan use astro`.\n"))
+        self.assertIn("**De dónde sale:** `Sources/MascoTuscanKit/CLI/PetCommands.swift` (123-129).", texto)
+        for ausente in ("Causa", "Plan", "Por qué esta ruta", "ruta del harness"):
+            self.assertNotIn(ausente, texto)
+
+    def test_falta_info_recibe_la_plantilla(self):
+        d = diagnostico(tipo="falta-info", alcance="ninguno", preguntas=["¿Qué versión usas?"])
+        texto = h.comentario(d, "comentar", ["x"], self.RUN, "abc", self.PLANTILLA,
+                             "https://github.com/o/r/issues/new?template=error.md")
+        self.assertTrue(texto.startswith("## Falta información\n"))
+        self.assertIn("- ¿Qué versión usas?", texto)
+        self.assertIn("[la plantilla](https://github.com/o/r/issues/new?template=error.md)", texto)
+        # Cuatro backticks: la plantilla trae sus propios bloques de codigo.
+        self.assertIn("````markdown\n## Qué pasó", texto)
+        self.assertIn("el dueño del repo lo vuelve a pasar", texto)
+        self.assertNotIn("claude:reevaluar", texto)
+
+    def test_falta_info_sin_plantilla_igual_pregunta(self):
+        d = diagnostico(tipo="falta-info", alcance="ninguno", preguntas=["¿Qué versión usas?"])
+        texto = h.comentario(d, "comentar", ["x"], self.RUN, "abc")
+        self.assertIn("Respóndelo aquí.", texto)
+        self.assertNotIn("````", texto)
+
+    def test_duplicado_es_breve(self):
+        d = diagnostico(tipo="duplicado", alcance="ninguno", causa="Es el mismo que el #3.")
+        texto = h.comentario(d, "comentar", ["x"], self.RUN, "abc")
+        self.assertTrue(texto.startswith("## Diagnóstico\n"))
+        self.assertIn("Es el mismo que el #3.", texto)
+        self.assertNotIn("Plan", texto)
+
+    def test_leer_plantilla_quita_el_front_matter(self):
+        texto = "---\nname: Reportar un error\nabout: x\n---\n\n## Qué pasó\n"
+        self.assertEqual(h.leer_plantilla(texto), "## Qué pasó")
+
+    def test_la_plantilla_del_repo_existe_y_se_lee(self):
+        texto = (RAIZ / ".github" / "ISSUE_TEMPLATE" / "error.md").read_text(encoding="utf-8")
+        plantilla = h.leer_plantilla(texto)
+        self.assertFalse(plantilla.startswith("---"))
+        self.assertIn("mascotuscan --version", plantilla)
 
 
 class PublicarTests(unittest.TestCase):

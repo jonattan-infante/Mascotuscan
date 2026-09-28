@@ -10,7 +10,8 @@ name: claude en issues
 #   implementar Claude edita segun el plan             evidente: sigue solo
 #                                                      estructural: espera tu aprobacion
 #   probar      tests de Linux sobre el parche         sin token ni secretos
-#   publicar    guardia otra vez, rama, PR y CI         sin Claude
+#   publicar    guardia otra vez, rama, PR, CI y la     sin Claude
+#               revision de Claude (claude-revision.yml)
 
 on:
   issues:
@@ -120,7 +121,9 @@ jobs:
           python3 ../scripts/issue-harness.py validar diagnostico.json
           ruta="$(python3 ../scripts/issue-harness.py ruta diagnostico.json --informe motivos.txt)"
           python3 ../scripts/issue-harness.py comentario diagnostico.json --ruta "$ruta" \
-            --motivos motivos.txt --run-url "$RUN_URL" --commit "$GITHUB_SHA" > comentario.md
+            --motivos motivos.txt --run-url "$RUN_URL" --commit "$GITHUB_SHA" \
+            --plantilla ../.github/ISSUE_TEMPLATE/error.md \
+            --nuevo-issue "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues/new?template=error.md" > comentario.md
           echo "ruta=$ruta" >> "$GITHUB_OUTPUT"
           echo "ruta: $ruta"
           cat motivos.txt
@@ -464,8 +467,10 @@ jobs:
           [[ "$RUTA" == confirmar ]] && borrador=(--draft)
           url="$(gh pr create --base main --head "$rama" --title "$titulo" \
                    --body-file "$RUNNER_TEMP/pr.md" "${borrador[@]}")"
-          # Un push con el token del workflow no dispara workflows: CI se pide
-          # explicito, y sus checks quedan en el commit del PR.
+          # Un push con el token del workflow no dispara workflows: CI y la
+          # revision de Claude se piden explicito, y sus checks quedan en el commit
+          # del PR.
           gh workflow run ci.yml --ref "$rama"
+          gh workflow run claude-revision.yml -f pr="${url##*/}"
           gh issue comment "$ISSUE" --body "Abrí $url con el cambio. CI corre sobre la rama; revísalo como cualquier otro PR antes de mergear."
           gh issue edit "$ISSUE" --add-label claude:pr-abierto

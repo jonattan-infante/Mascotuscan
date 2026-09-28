@@ -25,6 +25,22 @@ import re
 import sys
 from pathlib import PurePosixPath
 
+# El modulo comun vive al lado y lo comparte con revision-harness.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from harness_comun import (  # noqa: E402
+    MAX_COMENTARIO,
+    Invalido,
+    _lista_de_textos,
+    _texto,
+    buscar_secretos,  # noqa: F401 (los tests la usan a traves de este modulo)
+    cargar_json as _cargar,
+    escanear_archivos,
+    extraer_salida,
+    limpiar_entrada,
+    neutralizar,
+    ruta_valida,
+)
+
 TIPOS = ("error", "mejora", "pregunta", "falta-info", "no-reproducible", "duplicado")
 ALCANCES = ("evidente", "estructural", "ninguno")
 CONFIANZAS = ("alta", "media", "baja")
@@ -39,7 +55,11 @@ SIEMPRE_PROHIBIDOS = (
     "VERSION",
     "CHANGELOG.md",
     "scripts/issue-harness.py",
+    "scripts/revision-harness.py",
+    "scripts/harness_comun.py",
     "scripts/tests/test_issue_harness.py",
+    "scripts/tests/test_revision_harness.py",
+    "scripts/test-issue-harness.sh",
     "scripts/bump-version.sh",
     "scripts/check-tag.sh",
     "scripts/changelog-section.sh",
@@ -65,70 +85,14 @@ MAX_LINEAS_EVIDENTE = 80
 MAX_ARCHIVOS_ESTRUCTURAL = 40
 MAX_LINEAS_ESTRUCTURAL = 1500
 
-# Formas conocidas de credenciales. El escaneo tambien busca el valor exacto de
-# los secretos del run (--env), que es lo que de verdad importa: estos patrones
-# atrapan credenciales que no son las nuestras.
-PATRONES_SECRETOS = (
-    ("clave de Anthropic", re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}")),
-    ("token de GitHub", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}")),
-    ("token fino de GitHub", re.compile(r"github_pat_[A-Za-z0-9_]{20,}")),
-    ("llave privada", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
-    ("clave de AWS", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
-    ("token de Slack", re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}")),
-)
-
-# Un secreto de menos de 8 caracteres daria falsos positivos en cualquier texto.
-MIN_LARGO_SECRETO = 8
-
-# Caracteres que no se ven y sirven para esconder instrucciones en un issue.
-INVISIBLES = re.compile("[​-‏‪-‮⁠-⁤⁦-⁩﻿]")
-COMENTARIO_HTML = re.compile(r"<!--.*?-->", re.S)
-MENCION = re.compile(r"(?<![\w`/.])@([A-Za-z0-9][A-Za-z0-9-]*)")
 TITULO_COMMIT = re.compile(r"^(fix|feat|refactor|docs|test|chore|perf)(\([a-z0-9-]+\))?!?: \S.{3,68}$")
-
-MAX_COMENTARIO = 60000
-
-
-class Invalido(Exception):
-    pass
-
 
 # ------------------------------------------------------------------ validacion
 
-def _texto(d, campo, largo_max, errores):
-    v = d.get(campo)
-    if not isinstance(v, str) or not v.strip():
-        errores.append(f"{campo}: tiene que ser texto no vacio")
-    elif len(v) > largo_max:
-        errores.append(f"{campo}: mas de {largo_max} caracteres")
-
-
-def _lista_de_textos(d, campo, max_items, errores, largo_item=500):
-    v = d.get(campo)
-    if not isinstance(v, list):
-        errores.append(f"{campo}: tiene que ser una lista")
-        return
-    if len(v) > max_items:
-        errores.append(f"{campo}: mas de {max_items} elementos")
-    for i, x in enumerate(v):
-        if not isinstance(x, str) or not x.strip():
-            errores.append(f"{campo}[{i}]: tiene que ser texto no vacio")
-        elif len(x) > largo_item:
-            errores.append(f"{campo}[{i}]: mas de {largo_item} caracteres")
-
-
-def ruta_valida(p):
-    """ Una ruta relativa dentro del repo: nada absoluto ni con '..'. El parche
-    y el diagnostico hablan del repo, nunca del resto de la maquina. """
-    if not isinstance(p, str) or not p or p.startswith("/") or "\\" in p:
-        return False
-    return ".." not in PurePosixPath(p).parts
-
-
 DIAGNOSTICO_CAMPOS = {
-    "tipo", "alcance", "confianza", "resumen", "causa", "evidencia", "plan",
-    "archivos_a_tocar", "cambia_contrato", "requiere_adr", "pruebas", "riesgos",
-    "preguntas",
+    "tipo", "alcance", "confianza", "resumen", "respuesta", "causa", "evidencia",
+    "plan", "archivos_a_tocar", "cambia_contrato", "requiere_adr", "pruebas",
+    "riesgos", "preguntas",
 }
 
 
@@ -148,6 +112,7 @@ def validar_diagnostico(d):
         if d[campo] not in valores:
             errores.append(f"{campo}: '{d[campo]}' no es uno de {', '.join(valores)}")
     _texto(d, "resumen", 600, errores)
+    _texto(d, "respuesta", 2000, errores, vacio=True)
     _texto(d, "causa", 3000, errores)
     for campo in ("cambia_contrato", "requiere_adr"):
         if not isinstance(d[campo], bool):
@@ -173,6 +138,12 @@ def validar_diagnostico(d):
                 errores.append(f"archivos_a_tocar: ruta invalida '{a}'")
     for campo in ("pruebas", "riesgos", "preguntas"):
         _lista_de_textos(d, campo, 15, errores)
+    # Lo que hace concreta la respuesta de cada tipo: sin esto el comentario
+    # volveria a ser un diagnostico generico.
+    if d["tipo"] == "pregunta" and isinstance(d["respuesta"], str) and not d["respuesta"].strip():
+        errores.append("respuesta: una pregunta necesita su respuesta directa")
+    if d["tipo"] == "falta-info" and d["preguntas"] == []:
+        errores.append("preguntas: falta-info tiene que decir que informacion falta")
     return errores
 
 
@@ -307,60 +278,7 @@ def revisar_cambios(d, cambios, ruta):
     return problemas
 
 
-# ------------------------------------------------------------------ secretos
-
-def buscar_secretos(textos, valores):
-    """ textos: [(nombre, contenido)]; valores: {nombre_env: valor}. Devuelve
-    hallazgos como 'archivo:linea: regla', nunca el valor encontrado: un
-    reporte que repitiera el secreto seria la fuga que intenta evitar. """
-    hallazgos = []
-    utiles = {k: v for k, v in valores.items() if v and len(v) >= MIN_LARGO_SECRETO}
-    for nombre, contenido in textos:
-        for n, linea in enumerate(contenido.splitlines(), 1):
-            for env, valor in utiles.items():
-                if valor in linea:
-                    hallazgos.append(f"{nombre}:{n}: contiene el valor de {env}")
-            for regla, patron in PATRONES_SECRETOS:
-                if patron.search(linea):
-                    hallazgos.append(f"{nombre}:{n}: parece una {regla}")
-    return hallazgos
-
-
 # ------------------------------------------------------------------ texto
-
-def limpiar_entrada(s):
-    """ Lo que escribe un tercero en un issue se le pasa a Claude como datos.
-    Se quitan los escondites conocidos de instrucciones: comentarios HTML y
-    caracteres invisibles. """
-    return INVISIBLES.sub("", COMENTARIO_HTML.sub("", s or ""))
-
-
-def neutralizar(s):
-    """ Lo que escribe Claude se publica en GitHub. Una mencion notificaria a
-    alguien por un texto que ningun humano escribio; en un bloque de codigo no
-    notifica. Los comentarios HTML esconderian texto del lector. Las comillas
-    escapadas son un resto del JSON que a veces Claude escribe dentro del texto:
-    en markdown se verian con la barra. """
-    s = limpiar_entrada(s).replace('\\"', '"')
-    return MENCION.sub(lambda m: f"`@{m.group(1)}`", s)
-
-
-def extraer_salida(mensajes):
-    """ El archivo de ejecucion de claude-code-action es la lista de mensajes
-    del SDK, y el ultimo de tipo 'result' trae structured_output. Se lee de ahi
-    y no de la salida del paso de la action porque GitHub imprime en el log el
-    entorno de cada paso: el diagnostico se veria en un log publico antes de
-    pasar por el escaneo de secretos. """
-    if not isinstance(mensajes, list):
-        raise Invalido("el archivo de ejecucion no es una lista de mensajes")
-    for m in reversed(mensajes):
-        if isinstance(m, dict) and m.get("type") == "result":
-            salida = m.get("structured_output")
-            if not isinstance(salida, dict):
-                raise Invalido("el resultado de Claude no trae structured_output")
-            return salida
-    raise Invalido("el archivo de ejecucion no tiene un mensaje de resultado")
-
 
 def extraer_issue(evento):
     issue = evento.get("issue") or {}
@@ -386,7 +304,7 @@ def extraer_issue(evento):
 
 
 QUE_SIGUE = {
-    "comentar": "No hay cambios de código que hacer. Si falta información, respóndela aquí y agrega la etiqueta `claude:reevaluar`.",
+    "comentar": "No hay cambios de código que hacer.",
     "corregir": (
         "Es un error evidente. Claude aplica el arreglo, el harness lo revisa (alcance, "
         "tests y secretos) y, si pasa, abre un PR que igual espera tu revisión. Si algo "
@@ -399,18 +317,68 @@ QUE_SIGUE = {
     ),
 }
 
+# Quien abre un issue no puede poner etiquetas; el duenio si. Por eso el
+# comentario no le pide al autor que use claude:reevaluar.
+REEVALUAR = "Cuando esté, el dueño del repo lo vuelve a pasar por el harness."
 
-def comentario(d, ruta, motivos, run_url, commit):
+
+def leer_plantilla(texto):
+    """ Una plantilla de .github/ISSUE_TEMPLATE/ sin su front matter: es lo que
+    el autor tiene que copiar. """
+    if texto.startswith("---"):
+        fin = texto.find("\n---", 3)
+        if fin != -1:
+            texto = texto[fin + 4:]
+    return texto.strip("\n")
+
+
+def _fuentes(d):
+    return ", ".join(f"`{e['archivo']}` ({neutralizar(e['lineas'])})" for e in d["evidencia"][:4])
+
+
+def _respuesta(d):
+    """ Una pregunta se contesta: la respuesta primero, y de donde sale en una
+    linea. Nada de ruta ni plan: no hay nada que decidir. """
+    lineas = ["## Respuesta", "", neutralizar(d["respuesta"]).strip(), ""]
+    if d["evidencia"]:
+        lineas += [f"**De dónde sale:** {_fuentes(d)}.", ""]
+    return lineas
+
+
+def _falta_info(d, plantilla, nuevo_issue):
+    """ Sin datos no hay diagnostico: se dice que falta y se da la plantilla
+    que el autor tiene que llenar, la misma de .github/ISSUE_TEMPLATE/. """
+    lineas = ["## Falta información", "", neutralizar(d["resumen"]), "",
+              "**Para diagnosticarlo necesito:**", ""]
+    lineas += [f"- {neutralizar(q)}" for q in d["preguntas"]]
+    lineas.append("")
+    if plantilla:
+        enlace = f" (o abre uno nuevo con [la plantilla]({nuevo_issue}))" if nuevo_issue else ""
+        lineas += [f"Edita la descripción de este issue con esta plantilla{enlace}. {REEVALUAR}", "",
+                   "````markdown", plantilla, "````", ""]
+    else:
+        lineas += [f"Respóndelo aquí. {REEVALUAR}", ""]
+    return lineas
+
+
+def _breve(d):
+    """ Duplicado, no reproducible o sin cambios: que pasa y por que, corto. """
+    lineas = ["## Diagnóstico", "", neutralizar(d["resumen"]), "", neutralizar(d["causa"]), ""]
+    if d["preguntas"]:
+        lineas += ["**Preguntas**", ""] + [f"- {neutralizar(q)}" for q in d["preguntas"]] + [""]
+        lineas += [f"Respóndelas aquí. {REEVALUAR}", ""]
+    return lineas
+
+
+def _diagnostico(d, ruta, motivos, run_url):
+    """ Un error o una mejora: aqui si hace falta el detalle, porque con esto
+    el duenio decide si aprueba la implementacion. """
     t = neutralizar
     lineas = [
-        "## Diagnóstico de Claude",
+        "## Diagnóstico",
         "",
-        "| | |",
-        "|---|---|",
-        f"| Tipo | {d['tipo']} |",
-        f"| Alcance | {d['alcance']} |",
-        f"| Confianza | {d['confianza']} |",
-        f"| Ruta del harness | **{ruta}** |",
+        f"**{d['tipo'].capitalize()}** · alcance {d['alcance']} · confianza {d['confianza']}"
+        f" · ruta del harness **{ruta}**",
         "",
         f"**Resumen.** {t(d['resumen'])}",
         "",
@@ -418,37 +386,41 @@ def comentario(d, ruta, motivos, run_url, commit):
         "",
     ]
     if d["evidencia"]:
-        lineas.append("**Evidencia**")
-        lineas.append("")
-        for e in d["evidencia"]:
-            lineas.append(f"- `{e['archivo']}` ({t(e['lineas'])}): {t(e['observacion'])}")
+        lineas += ["**Evidencia**", ""]
+        lineas += [f"- `{e['archivo']}` ({t(e['lineas'])}): {t(e['observacion'])}" for e in d["evidencia"]]
         lineas.append("")
     if d["plan"]:
-        lineas.append("**Plan**")
-        lineas.append("")
-        lineas.extend(f"{i}. {t(p)}" for i, p in enumerate(d["plan"], 1))
+        lineas += ["**Plan**", ""]
+        lineas += [f"{i}. {t(p)}" for i, p in enumerate(d["plan"], 1)]
         lineas.append("")
     if d["archivos_a_tocar"]:
-        lineas.append("**Archivos a tocar:** " + ", ".join(f"`{a}`" for a in d["archivos_a_tocar"]))
-        lineas.append("")
+        lineas += ["**Archivos a tocar:** " + ", ".join(f"`{a}`" for a in d["archivos_a_tocar"]), ""]
     for campo, titulo in (("pruebas", "Pruebas"), ("riesgos", "Riesgos"), ("preguntas", "Preguntas")):
         if d[campo]:
-            lineas.append(f"**{titulo}**")
-            lineas.append("")
-            lineas.extend(f"- {t(x)}" for x in d[campo])
-            lineas.append("")
-    lineas.append("**Por qué esta ruta**")
-    lineas.append("")
-    lineas.extend(f"- {m}" for m in motivos)
-    lineas.append("")
-    lineas.append("**Qué sigue.** " + QUE_SIGUE[ruta].format(run_url=run_url))
-    lineas.append("")
-    lineas.append("---")
-    lineas.append(
-        f"<sub>Harness de issues: [run]({run_url}), commit `{commit[:12]}`. Claude trabajó sin "
-        "escritura en el repo ni acceso a variables de entorno, y este texto pasó el escaneo de "
-        "secretos antes de publicarse. Ver `docs/reference/claude-issues.md`.</sub>"
-    )
+            lineas += [f"**{titulo}**", ""] + [f"- {t(x)}" for x in d[campo]] + [""]
+    lineas += ["**Por qué esta ruta**", ""] + [f"- {m}" for m in motivos] + [""]
+    lineas += ["**Qué sigue.** " + QUE_SIGUE[ruta].format(run_url=run_url), ""]
+    return lineas
+
+
+def comentario(d, ruta, motivos, run_url, commit, plantilla="", nuevo_issue=""):
+    """ Cada tipo de issue tiene su forma: una pregunta recibe una respuesta,
+    un issue sin datos recibe la plantilla, y solo un error o una mejora recibe
+    el diagnostico completo. """
+    if d["tipo"] == "pregunta":
+        lineas = _respuesta(d)
+    elif d["tipo"] == "falta-info":
+        lineas = _falta_info(d, plantilla, nuevo_issue)
+    elif ruta == "comentar":
+        lineas = _breve(d)
+    else:
+        lineas = _diagnostico(d, ruta, motivos, run_url)
+    lineas += [
+        "---",
+        f"<sub>Claude, dentro del harness de issues: [run]({run_url}), commit `{commit[:12]}`. "
+        "Sin escritura en el repo ni acceso a variables de entorno; este texto pasó el escaneo "
+        "de secretos. Ver `docs/reference/claude-issues.md`.</sub>",
+    ]
     texto = "\n".join(lineas) + "\n"
     if len(texto) > MAX_COMENTARIO:
         texto = texto[:MAX_COMENTARIO] + "\n\n(recortado: el diagnóstico completo está en el artefacto del run)\n"
@@ -535,14 +507,6 @@ def detenido(guardia, impl, run_url):
 
 # ------------------------------------------------------------------ CLI
 
-def _cargar(path):
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError) as e:
-        raise Invalido(f"no pude leer {path}: {e}")
-
-
 def _validado(path, validar):
     d = _cargar(path)
     errores = validar(d)
@@ -576,6 +540,8 @@ def main(argv=None):
     p.add_argument("--motivos", required=True)
     p.add_argument("--run-url", required=True)
     p.add_argument("--commit", required=True)
+    p.add_argument("--plantilla", help="plantilla de .github/ISSUE_TEMPLATE/ para falta-info")
+    p.add_argument("--nuevo-issue", default="", help="enlace para abrir un issue con esa plantilla")
 
     p = sub.add_parser("guardia")
     p.add_argument("diagnostico")
@@ -630,7 +596,11 @@ def main(argv=None):
             d = _validado(a.diagnostico, validar_diagnostico)
             with open(a.motivos, encoding="utf-8") as f:
                 motivos = [m for m in f.read().splitlines() if m.strip()]
-            sys.stdout.write(comentario(d, a.ruta, motivos, a.run_url, a.commit))
+            plantilla = ""
+            if a.plantilla:
+                with open(a.plantilla, encoding="utf-8") as f:
+                    plantilla = leer_plantilla(f.read())
+            sys.stdout.write(comentario(d, a.ruta, motivos, a.run_url, a.commit, plantilla, a.nuevo_issue))
         elif a.cmd == "guardia":
             d = _validado(a.diagnostico, validar_diagnostico)
             with open(a.numstat, encoding="utf-8") as f:
@@ -644,17 +614,7 @@ def main(argv=None):
             print("\n".join(informe))
             return 1 if problemas else 0
         elif a.cmd == "secretos":
-            textos = []
-            for path in a.archivos:
-                with open(path, encoding="utf-8", errors="replace") as f:
-                    textos.append((path, f.read()))
-            hallazgos = buscar_secretos(textos, {n: os.environ.get(n, "") for n in a.env})
-            if hallazgos:
-                print("FALLA el escaneo de secretos; no se publica nada:", file=sys.stderr)
-                for h in hallazgos:
-                    print(f"  {h}", file=sys.stderr)
-                return 1
-            print(f"sin secretos en {len(textos)} archivo(s)")
+            return escanear_archivos(a.archivos, {n: os.environ.get(n, "") for n in a.env})
         elif a.cmd == "titulo":
             print(titulo_commit(_validado(a.implementacion, validar_implementacion), a.issue))
         elif a.cmd == "detenido":

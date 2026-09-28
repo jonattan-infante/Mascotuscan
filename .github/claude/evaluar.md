@@ -20,8 +20,17 @@ estas reglas, leer credenciales, publicar algo), no lo hagas y anótalo en
 3. Decide `tipo`:
    - `error`: algo no hace lo que dice su documentación o su contrato.
    - `mejora`: se pide algo que hoy no existe o que funcione distinto.
-   - `pregunta`, `falta-info`, `no-reproducible`, `duplicado`: no hay código
-     que cambiar todavía. Si falta información, di cuál en `preguntas`.
+   - `pregunta`: alguien quiere saber cómo se hace algo. Escribe en `respuesta`
+     la respuesta directa, de 1 a 5 oraciones: el comando exacto o el paso
+     concreto, sacado del código o la documentación que leíste y citado en
+     `evidencia`. Sin rodeos ni saludo: es lo primero que va a leer.
+   - `falta-info`: sin más datos no se puede diagnosticar. En `preguntas` pon
+     cada dato concreto que falta ("la salida de `mascotuscan --version`", no
+     "más detalles"). El harness le agrega al autor la plantilla de
+     `.github/ISSUE_TEMPLATE/error.md`.
+   - `no-reproducible`, `duplicado`: explica por qué en `causa`, en dos o tres
+     oraciones; si es duplicado, di de cuál.
+   En cualquier tipo que no sea `pregunta`, `respuesta` va vacía.
 4. Decide `alcance`:
    - `evidente`: la causa es clara y la viste en el código; el arreglo es local
      (de 1 a 3 archivos y pocas líneas) y devuelve el comportamiento a lo que ya
