@@ -70,7 +70,7 @@ Nada más es necesario. Un pack mínimo válido son dos archivos: `pet.json` y
 | Valor | Qué dibuja | Cuándo usarlo |
 |---|---|---|
 | `vector:droid` | droide astromecánico: cúpula con lente, torso con paneles, tres patas | voz de máquina de servicio |
-| `vector:ball` | droide esférico: cuerpo bola que rueda, cúpula con lente y antena | voz ágil o juguetona |
+| `vector:ball` | droide esférico apoyado en el piso: quieto, la cabeza mira alrededor con pausas; trabajando, rueda hacia quien mira con los paneles barridos | voz ágil o juguetona |
 | `vector:sage` | figura encapuchada: túnica, ojos en la sombra, bastón | voz tranquila o sentenciosa |
 | `sprites` | tus propias imágenes | tienes arte propio |
 
