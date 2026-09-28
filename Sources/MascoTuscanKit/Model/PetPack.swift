@@ -143,6 +143,11 @@ public extension PetPack {
 
         var roam: RoamSpec? = nil
         if let declared = raw["roam"] {
+            // Un dibujo vectorial no sabe mirar hacia donde va: rodaria con las
+            // imagenes de `roam` y en reposo volveria a ser otro. Ver docs/adr/0013.
+            guard renderer == .sprites else {
+                return .failure(.badRoam("\"roam\" es para mascotas con imágenes: necesita \"renderer\": \"sprites\""))
+            }
             switch parseRoam(declared, in: dir) {
             case .success(let r): roam = r
             case .failure(let e): return .failure(e)
@@ -181,8 +186,12 @@ public extension PetPack {
             }
             guard !rel.contains("..") else { return .failure(.escapingPath(rel)) }
             let url = dir.appendingPathComponent(rel)
-            guard FileManager.default.fileExists(atPath: url.path) else {
+            var isDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else {
                 return .failure(.badRoam("\"roam.\(key)\" apunta a \"\(rel)\", que no existe en el paquete"))
+            }
+            guard !isDir.boolValue else {
+                return .failure(.badRoam("\"roam.\(key)\" apunta a la carpeta \"\(rel)\": tiene que ser una imagen"))
             }
             return .success(url)
         }

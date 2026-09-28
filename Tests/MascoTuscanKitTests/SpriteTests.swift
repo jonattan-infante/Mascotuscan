@@ -104,6 +104,52 @@ final class SpriteTests: XCTestCase {
         XCTAssertEqual(s.decodes, 2)
     }
 
+    /// Una animacion que no cabe en el tope no guarda todos sus cuadros: cuantos
+    /// hay lo decide el autor del paquete, y la memoria no puede depender de eso.
+    func testUnaAnimacionQueNoCabeNoGuardaSusCuadros() throws {
+        let s = try XCTUnwrap(Sprite(url: try animation("grande.png", .png, [0.1, 0.1, 0.1])))
+        let px = CGSize(width: 20, height: 20)
+        s.cacheBudget = 3 * 20 * 20 * 4 - 1
+        _ = s.frame(0, pixelSize: px)
+        _ = s.frame(1, pixelSize: px)
+        _ = s.frame(0, pixelSize: px)
+        XCTAssertEqual(s.decodes, 3, "el cuadro 0 se volvio a decodificar")
+        // El cuadro actual si queda: a 30 fps se dibuja varias veces seguidas.
+        _ = s.frame(0, pixelSize: px)
+        XCTAssertEqual(s.decodes, 3)
+    }
+
+    /// La memoria es la de la imagen visible: al dejar de verse, suelta sus cuadros.
+    func testAlDejarDeVerseSueltaSusCuadros() throws {
+        let s = try XCTUnwrap(Sprite(url: try animation("e.png", .png, [0.1, 0.1])))
+        let px = CGSize(width: 20, height: 20)
+        _ = s.frame(0, pixelSize: px)
+        s.releaseFrames()
+        _ = s.frame(0, pixelSize: px)
+        XCTAssertEqual(s.decodes, 2)
+    }
+
+    /// En un TIFF las imagenes son la misma a otros tamanos: animarlo la haria
+    /// parpadear entre versiones.
+    func testUnTIFFConVariasImagenesNoSeAnima() throws {
+        let url = dir.appendingPathComponent("hidpi.tiff")
+        let dest = try XCTUnwrap(CGImageDestinationCreateWithURL(
+            url as CFURL, UTType.tiff.identifier as CFString, 2, nil))
+        for side in [40, 80] {
+            let ctx = try XCTUnwrap(CGContext(
+                data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            ctx.setFillColor(CGColor(srgbRed: 0.2, green: 0.5, blue: 0.8, alpha: 1))
+            ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
+            CGImageDestinationAddImage(dest, try XCTUnwrap(ctx.makeImage()), nil)
+        }
+        XCTAssertTrue(CGImageDestinationFinalize(dest))
+        let s = try XCTUnwrap(Sprite(url: url))
+        XCTAssertEqual(s.frameCount, 1)
+        XCTAssertEqual(s.total, 0)
+    }
+
     func testUnaImagenFijaNoSeAnima() throws {
         let s = try XCTUnwrap(Sprite(url: try animation("fija.png", .png, [0.1])))
         XCTAssertEqual(s.frameCount, 1)

@@ -209,17 +209,31 @@ public final class PetController: NSObject, NSApplicationDelegate {
         // origin es la esquina de la ventana; el ancla es la del personaje dentro de ella.
         let delta = CGPoint(x: origin.x - panel.frame.minX, y: origin.y - panel.frame.minY)
         anchor = clamp(CGPoint(x: anchor.x + delta.x, y: anchor.y + delta.y))
+        settle()
+    }
+
+    /// La persona eligio donde va la mascota, arrastrandola o con "Reiniciar
+    /// posicion": ese es su lugar. Si recorre la pantalla, `Roamer` tiene que
+    /// saberlo; si no, en el siguiente cuadro la devolveria a su lugar anterior.
+    func settle() {
         roamer?.place(at: Double(anchor.x))
         layout()
         scheduleSave()
     }
 
+    /// Lo que se guarda como su lugar: donde vuelve cuando no hay trabajo, no
+    /// donde vaya rodando cuando se escriba la configuracion.
+    func placeToSave() -> CGPoint {
+        CGPoint(x: roamer.map { CGFloat($0.home) } ?? anchor.x, y: anchor.y)
+    }
+
     func scheduleSave() {
         saveWorkItem?.cancel()
+        let place = placeToSave()
         let item = DispatchWorkItem { [weak self] in
             guard let self = self else { return }
-            self.config.x = self.anchor.x
-            self.config.y = self.anchor.y
+            self.config.x = place.x
+            self.config.y = place.y
             self.config.save()
         }
         saveWorkItem = item

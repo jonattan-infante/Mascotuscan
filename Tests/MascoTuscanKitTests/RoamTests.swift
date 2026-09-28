@@ -191,4 +191,58 @@ final class CelebrarAlTerminarTests: XCTestCase {
         XCTAssertEqual(clock.time(showing: "flamita", now: 105.5), 1.5)
         XCTAssertEqual(clock.time(showing: "quieto", now: 107), 0, "volver a una imagen la reinicia")
     }
+
+    /// done con imagen, working con el dibujo vectorial, done otra vez: el gesto
+    /// de una sola vez vuelve a empezar aunque la clave sea la misma.
+    func testDespuesDelVectorialLaImagenEmpiezaDeNuevo() {
+        var clock = SpriteClock()
+        _ = clock.time(showing: "flamita", now: 10)
+        clock.reset()
+        XCTAssertEqual(clock.time(showing: "flamita", now: 20), 0)
+    }
+}
+
+/// Donde la pones es su lugar: arrastrandola o con "Reiniciar posicion".
+final class SuLugarTests: XCTestCase {
+    private func controller(roamingAt x: Double) -> PetController {
+        let pc = PetController()
+        pc.config = PetConfig()
+        pc.anchor = CGPoint(x: x, y: 50)
+        pc.roamer = Roamer(x: x, speed: 100, startDuration: 0)
+        return pc
+    }
+
+    /// Era el defecto: "Reiniciar posicion" movia el ancla, pero `Roamer` seguia
+    /// con el lugar anterior y en el siguiente cuadro la devolvia ahi.
+    func testReiniciarLaPosicionCambiaSuLugar() {
+        let pc = controller(roamingAt: 300)
+        pc.anchor.x = 700
+        pc.settle()
+        pc.saveWorkItem?.cancel()
+        XCTAssertEqual(pc.roamer?.home, 700)
+        XCTAssertEqual(pc.roamer?.x, 700)
+        XCTAssertEqual(pc.roamGoal(), .home)
+        var r = pc.roamer!
+        r.step(0.1, goal: .home, bounds: 0...1000)
+        XCTAssertEqual(r.x, 700, "volvio al lugar anterior")
+    }
+
+    /// Lo que se guarda es su lugar, no donde vaya rodando al escribirse la
+    /// configuracion.
+    func testSeGuardaSuLugarYNoDondeVaRodando() {
+        let pc = controller(roamingAt: 300)
+        var r = pc.roamer!
+        for _ in 0..<60 { r.step(1.0 / 30, goal: .roam, bounds: 0...1000) }
+        pc.roamer = r
+        pc.anchor.x = CGFloat(r.x)
+        XCTAssertNotEqual(r.x, 300, "tenia que haberse movido")
+        XCTAssertEqual(pc.placeToSave(), CGPoint(x: 300, y: 50))
+    }
+
+    func testSinRoamSeGuardaDondeEsta() {
+        let pc = PetController()
+        pc.config = PetConfig()
+        pc.anchor = CGPoint(x: 120, y: 80)
+        XCTAssertEqual(pc.placeToSave(), CGPoint(x: 120, y: 80))
+    }
 }
