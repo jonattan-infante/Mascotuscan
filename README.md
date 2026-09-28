@@ -214,7 +214,7 @@ son originales:
 | `renderer` | Qué dibuja |
 |---|---|
 | `vector:droid` | droide astromecánico: cúpula con lente, torso, tres patas |
-| `vector:ball` | droide esférico: cuerpo bola que rueda, cúpula y antena |
+| `vector:ball` | droide esférico apoyado en el piso: quieto mira alrededor, trabajando rueda hacia ti |
 | `vector:sage` | figura encapuchada: túnica, ojos en la sombra, bastón |
 
 `mascotuscan renderers` los lista. El formato completo del paquete está en

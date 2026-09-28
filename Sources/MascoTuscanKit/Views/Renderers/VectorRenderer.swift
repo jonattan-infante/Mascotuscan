@@ -32,11 +32,15 @@ public struct PetAnimation {
 
     /// Cuanto sube el cuerpo: flota siempre, salta al terminar.
     public var lift: CGFloat {
-        var dy = sin(phase * (mood == .working ? 3.2 : 1.6)) * (mood == .working ? 3 : 2)
-        if mood == .done {
-            dy += abs(sin(age * 7)) * 15 * max(0, 1 - age / 1.4)
-        }
-        return CGFloat(dy)
+        let float = sin(phase * (mood == .working ? 3.2 : 1.6)) * (mood == .working ? 3 : 2)
+        return CGFloat(float) + hop
+    }
+
+    /// Solo el salto al terminar, sin el flote. Es lo unico que sube un cuerpo
+    /// que se apoya en el piso.
+    public var hop: CGFloat {
+        guard mood == .done else { return 0 }
+        return CGFloat(abs(sin(age * 7)) * 15 * max(0, 1 - age / 1.4))
     }
 
     /// Cuanto se sacude de lado: solo al fallar, y decae rapido.
@@ -59,13 +63,17 @@ public struct VectorRenderer {
     public let title: String
     /// Una linea sobre como se ve.
     public let summary: String
+    /// Si el cuerpo flota en reposo. Una bola suspendida en el aire deja de
+    /// leerse como algo que rueda: esos cuerpos solo suben cuando saltan.
+    public let floats: Bool
     public let draw: (CGRect, PetAnimation, CGContext) -> Void
 
-    public init(id: String, title: String, summary: String,
+    public init(id: String, title: String, summary: String, floats: Bool = true,
                 draw: @escaping (CGRect, PetAnimation, CGContext) -> Void) {
         self.id = id
         self.title = title
         self.summary = summary
+        self.floats = floats
         self.draw = draw
     }
 }

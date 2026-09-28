@@ -106,7 +106,8 @@ final class PetView: NSView {
         // Desplazamiento: flotar siempre, saltar al terminar, sacudirse al fallar.
         // La formula vive en PetAnimation para que los renderers la compartan.
         let motion = PetAnimation(mood: mood, phase: phase, age: age, blinking: false)
-        let dy = motion.lift
+        let body = renderer()
+        let dy = (sprite(for: mood) != nil || body.floats) ? motion.lift : motion.hop
         let box = bodyRect().offsetBy(dx: motion.shake, dy: dy)
 
         // Sombra en el piso: se achica cuando sube.
@@ -124,7 +125,7 @@ final class PetView: NSView {
         }
         let anim = PetAnimation(mood: mood, phase: phase, age: age,
                                 blinking: CACurrentMediaTime() < blinkUntil)
-        renderer().draw(box, anim, ctx)
+        body.draw(box, anim, ctx)
         drawAccessory(body: box)
     }
 
