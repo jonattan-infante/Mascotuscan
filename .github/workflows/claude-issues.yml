@@ -1,0 +1,468 @@
+name: claude en issues
+
+# Claude evalua cada issue nuevo, pero solo despues de que el duenio aprueba la
+# corrida (environment "claude"). Claude nunca escribe en el repo ni en GitHub:
+# lo que sale del runner lo decide y lo revisa scripts/issue-harness.py, con
+# reglas fijas. Contrato y razones: docs/reference/claude-issues.md, docs/adr/0011.
+#
+#   evaluar     Claude diagnostica, solo lectura      espera tu aprobacion
+#   comentar    publica el diagnostico en el issue     sin Claude
+#   implementar Claude edita segun el plan             evidente: sigue solo
+#                                                      estructural: espera tu aprobacion
+#   probar      tests de Linux sobre el parche         sin token ni secretos
+#   publicar    guardia otra vez, rama, PR y CI         sin Claude
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions: {}
+
+# Una corrida del harness por issue a la vez. Cualquier otra etiqueta dispara
+# este workflow solo para saltarlo: va a su propio grupo, porque en el del issue
+# reemplazaria a un claude:reevaluar que estuviera en cola.
+concurrency:
+  group: >-
+    claude-issue-${{ github.event.issue.number }}-${{
+    (github.event.action == 'opened' || github.event.label.name == 'claude:reevaluar')
+    && 'harness' || github.run_id }}
+  cancel-in-progress: false
+
+env:
+  ISSUE: ${{ github.event.issue.number }}
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+jobs:
+  evaluar:
+    name: evaluar
+    # Un issue nuevo de una persona, o la etiqueta claude:reevaluar, que solo puede
+    # poner quien tiene permiso de escritura.
+    if: >-
+      (github.event.action == 'opened' && github.event.issue.user.type != 'Bot') ||
+      (github.event.action == 'labeled' && github.event.label.name == 'claude:reevaluar')
+    runs-on: ubuntu-latest
+    environment: claude
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      ruta: ${{ steps.ruta.outputs.ruta }}
+    steps:
+      # Distingue "no se aprobo" de "se aprobo y fallo": comentar decide con esto.
+      - name: Marcar que la corrida se aprobo
+        run: echo "aprobado" > "$RUNNER_TEMP/iniciado.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evaluar-iniciado
+          path: ${{ runner.temp }}/iniciado.txt
+          retention-days: 90
+          overwrite: true
+
+      # Sin credenciales en .git/config: Claude puede leer el repo, y ese token no
+      # tiene por que estar a su alcance.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Preparar la entrada de Claude
+        id: entrada
+        run: |
+          mkdir -p claude-entrada claude-salida
+          printf '%s\n' 'claude-entrada/' 'claude-salida/' >> .git/info/exclude
+          python3 scripts/issue-harness.py issue "$GITHUB_EVENT_PATH" claude-entrada/issue.md
+          {
+            echo 'prompt<<FIN_DEL_PROMPT'
+            cat .github/claude/evaluar.md
+            echo 'FIN_DEL_PROMPT'
+            echo "esquema=$(jq -c . .github/claude/diagnostico.schema.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Claude evalua (solo lectura)
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # El token del workflow, con los permisos de solo lectura de este job, en
+          # vez del de la app de Claude: Claude no tiene con que escribir en GitHub.
+          github_token: ${{ github.token }}
+          # El issue puede venir de alguien sin escritura en el repo. Tu aprobacion
+          # del environment es la revision humana que la action pide para eso.
+          allowed_non_write_users: '*'
+          settings: .github/claude/settings.json
+          prompt: ${{ steps.entrada.outputs.prompt }}
+          claude_args: |
+            --max-turns 30
+            --allowedTools Read,Grep,Glob
+            --disallowedTools Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task
+            --json-schema '${{ steps.entrada.outputs.esquema }}'
+
+      - name: Guardar lo que produjo Claude
+        if: always() && steps.entrada.outcome == 'success'
+        env:
+          SALIDA: ${{ steps.claude.outputs.structured_output }}
+          EJECUCION: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          cp claude-entrada/issue.md claude-salida/issue.md
+          if [[ -n "$SALIDA" ]]; then printf '%s' "$SALIDA" > claude-salida/diagnostico.json; fi
+          if [[ -n "$EJECUCION" && -f "$EJECUCION" ]]; then
+            cp "$EJECUCION" claude-salida/ejecucion-evaluar.json
+          fi
+
+      - name: Decidir la ruta (reglas fijas, no Claude)
+        id: ruta
+        run: |
+          cd claude-salida
+          python3 ../scripts/issue-harness.py validar diagnostico.json
+          ruta="$(python3 ../scripts/issue-harness.py ruta diagnostico.json --informe motivos.txt)"
+          python3 ../scripts/issue-harness.py comentario diagnostico.json --ruta "$ruta" \
+            --motivos motivos.txt --run-url "$RUN_URL" --commit "$GITHUB_SHA" > comentario.md
+          echo "ruta=$ruta" >> "$GITHUB_OUTPUT"
+          echo "ruta: $ruta"
+          cat motivos.txt
+
+      - name: Escanear secretos antes de que nada salga
+        id: escaneo
+        if: always() && steps.entrada.outcome == 'success'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TOKEN_DEL_RUN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          archivos=(claude-salida/*)
+          python3 scripts/issue-harness.py secretos --env CLAUDE_CODE_OAUTH_TOKEN --env TOKEN_DEL_RUN "${archivos[@]}"
+
+      # Solo si el escaneo paso: los artefactos de un repo publico los puede bajar
+      # cualquiera, asi que un artefacto con un secreto seria una fuga publica.
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.escaneo.outcome == 'success'
+        with:
+          name: diagnostico
+          path: claude-salida/
+          retention-days: 90
+          overwrite: true
+
+  comentar:
+    name: publicar diagnostico
+    needs: evaluar
+    if: always() && needs.evaluar.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: evaluar-iniciado
+          path: ${{ runner.temp }}/marca
+      - uses: actions/download-artifact@v4
+        if: needs.evaluar.result == 'success'
+        with:
+          name: diagnostico
+          path: ${{ runner.temp }}/diagnostico
+
+      - name: Publicar en el issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RESULTADO: ${{ needs.evaluar.result }}
+          RUTA: ${{ needs.evaluar.outputs.ruta }}
+          ACCION: ${{ github.event.action }}
+        run: |
+          etiqueta() { gh label create "$1" --color "$2" --description "$3" --force >/dev/null; }
+          etiqueta claude:reevaluar    c5def5 "Vuelve a pasar el issue por el harness de Claude"
+          etiqueta claude:sin-cambios  ededed "Claude lo diagnostico; no hay codigo que cambiar"
+          etiqueta claude:evidente     0e8a16 "Error evidente: el harness intenta el arreglo"
+          etiqueta claude:por-confirmar fbca04 "Diagnostico listo; implementarlo espera tu aprobacion"
+          etiqueta claude:pr-abierto   1d76db "El harness abrio un PR"
+          etiqueta claude:bloqueado    d93f0b "El harness se detuvo; ver el comentario"
+          etiqueta claude:sin-aprobar  ededed "Nadie aprobo la corrida de Claude"
+          if [[ "$ACCION" == labeled ]]; then gh issue edit "$ISSUE" --remove-label claude:reevaluar; fi
+
+          if [[ "$RESULTADO" != success ]]; then
+            if [[ ! -f "$RUNNER_TEMP/marca/iniciado.txt" ]]; then
+              # Rechazada o vencida la aprobacion: Claude no corrio y no hay nada que decir.
+              gh issue edit "$ISSUE" --add-label claude:sin-aprobar
+              exit 0
+            fi
+            gh issue comment "$ISSUE" --body "El harness de Claude no pudo terminar el diagnóstico (\`$RESULTADO\`). No se publicó nada de lo que produjo Claude. Detalles y artefactos en [el run]($RUN_URL)."
+            gh issue edit "$ISSUE" --add-label claude:bloqueado
+            exit 1
+          fi
+
+          comentario="$RUNNER_TEMP/diagnostico/comentario.md"
+          python3 scripts/issue-harness.py secretos "$comentario"
+          gh issue comment "$ISSUE" --body-file "$comentario"
+          case "$RUTA" in
+            comentar)  gh issue edit "$ISSUE" --add-label claude:sin-cambios ;;
+            corregir)  gh issue edit "$ISSUE" --add-label claude:evidente ;;
+            confirmar) gh issue edit "$ISSUE" --add-label claude:por-confirmar ;;
+            *) echo "ruta desconocida: $RUTA" >&2; exit 1 ;;
+          esac
+
+  implementar:
+    name: implementar (${{ needs.evaluar.outputs.ruta }})
+    # Despues de comentar: para confirmar un cambio estructural tienes que poder
+    # leer el diagnostico en el issue antes de aprobar.
+    needs: [evaluar, comentar]
+    if: needs.evaluar.outputs.ruta == 'corregir' || needs.evaluar.outputs.ruta == 'confirmar'
+    runs-on: ubuntu-latest
+    # Un error evidente sigue solo (claude-auto, sin revisores). Uno estructural
+    # espera tu aprobacion (claude): aprobar este job es la confirmacion.
+    environment: ${{ needs.evaluar.outputs.ruta == 'corregir' && 'claude-auto' || 'claude' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      guardia: ${{ steps.guardia.outputs.guardia }}
+    env:
+      RUTA: ${{ needs.evaluar.outputs.ruta }}
+    steps:
+      - name: Marcar que la corrida se aprobo
+        run: echo "aprobado" > "$RUNNER_TEMP/iniciado.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: implementar-iniciado
+          path: ${{ runner.temp }}/iniciado.txt
+          retention-days: 90
+          overwrite: true
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Fuera del workspace: la guardia usa el diagnostico aprobado, no la copia
+      # que Claude tiene a mano y podria editar.
+      - uses: actions/download-artifact@v4
+        with:
+          name: diagnostico
+          path: ${{ runner.temp }}/aprobado
+
+      - name: Preparar la entrada de Claude
+        id: entrada
+        run: |
+          mkdir -p claude-entrada claude-salida
+          printf '%s\n' 'claude-entrada/' 'claude-salida/' >> .git/info/exclude
+          cp "$RUNNER_TEMP/aprobado/issue.md" "$RUNNER_TEMP/aprobado/diagnostico.json" claude-entrada/
+          {
+            echo 'prompt<<FIN_DEL_PROMPT'
+            cat .github/claude/implementar.md
+            echo "$RUTA"
+            echo 'FIN_DEL_PROMPT'
+            echo "esquema=$(jq -c . .github/claude/implementacion.schema.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Claude implementa (edita, sin comandos)
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          allowed_non_write_users: '*'
+          settings: .github/claude/settings.json
+          prompt: ${{ steps.entrada.outputs.prompt }}
+          claude_args: |
+            --max-turns 60
+            --allowedTools Read,Grep,Glob,Edit,Write
+            --disallowedTools Bash,NotebookEdit,WebFetch,WebSearch,Task
+            --json-schema '${{ steps.entrada.outputs.esquema }}'
+
+      - name: Guardar lo que produjo Claude
+        if: always() && steps.entrada.outcome == 'success'
+        env:
+          SALIDA: ${{ steps.claude.outputs.structured_output }}
+          EJECUCION: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          if [[ -n "$SALIDA" ]]; then printf '%s' "$SALIDA" > claude-salida/implementacion.json; fi
+          if [[ -n "$EJECUCION" && -f "$EJECUCION" ]]; then
+            cp "$EJECUCION" claude-salida/ejecucion-implementar.json
+          fi
+          git add -A
+          git diff --cached --no-renames > claude-salida/cambios.patch
+          git diff --cached --no-renames --numstat > claude-salida/cambios.numstat
+          git diff --cached --no-renames --stat
+
+      - name: Guardia (reglas fijas, no Claude)
+        id: guardia
+        run: |
+          python3 scripts/issue-harness.py validar-impl claude-salida/implementacion.json
+          if python3 scripts/issue-harness.py guardia "$RUNNER_TEMP/aprobado/diagnostico.json" \
+               claude-salida/cambios.numstat --ruta "$RUTA" --informe claude-salida/guardia.txt; then
+            echo "guardia=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "guardia=rechazada" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Escanear secretos antes de que nada salga
+        id: escaneo
+        if: always() && steps.entrada.outcome == 'success'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TOKEN_DEL_RUN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          archivos=(claude-salida/*)
+          python3 scripts/issue-harness.py secretos --env CLAUDE_CODE_OAUTH_TOKEN --env TOKEN_DEL_RUN "${archivos[@]}"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.escaneo.outcome == 'success'
+        with:
+          name: implementacion
+          path: claude-salida/
+          retention-days: 90
+          overwrite: true
+
+  probar:
+    name: probar (sin secretos)
+    needs: [evaluar, implementar]
+    if: needs.implementar.result == 'success' && needs.implementar.outputs.guardia == 'ok'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Aqui corre codigo que escribio Claude: sin secretos, sin environment y con
+    # el token de solo lectura fuera de .git/config.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: implementacion
+          path: ${{ runner.temp }}/implementacion
+      - name: Aplicar el parche
+        run: git apply --index "$RUNNER_TEMP/implementacion/cambios.patch"
+      - name: Instalar zsh para los hooks
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh >/dev/null
+      # macOS y Swift los corre CI sobre el PR; aqui, lo que corre en Linux.
+      - name: Tests que corren en Linux
+        run: |
+          mkdir -p "$RUNNER_TEMP/pruebas"
+          exec > >(tee "$RUNNER_TEMP/pruebas/pruebas.log") 2>&1
+          fallas=0
+          correr() { echo "== $*"; "$@" || { echo "FALLA $*"; fallas=1; }; }
+          correr make test-windows
+          correr ./scripts/test-issue-harness.sh
+          correr ./scripts/test-repo-integrity.sh
+          correr ./scripts/test-shell-hooks.sh
+          exit $fallas
+      - name: Escanear el log
+        id: escaneo
+        if: always()
+        run: python3 scripts/issue-harness.py secretos "$RUNNER_TEMP/pruebas/pruebas.log"
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.escaneo.outcome == 'success'
+        with:
+          name: pruebas
+          path: ${{ runner.temp }}/pruebas/
+          retention-days: 90
+          overwrite: true
+
+  publicar:
+    name: publicar PR
+    needs: [evaluar, implementar, probar]
+    if: always() && (needs.implementar.result == 'success' || needs.implementar.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # El unico job que escribe en el repo. Claude nunca corrio aqui y aqui no
+    # esta su token; lo que se publica es el parche ya revisado.
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    env:
+      RUTA: ${{ needs.evaluar.outputs.ruta }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: implementar-iniciado
+          path: ${{ runner.temp }}/marca
+      - uses: actions/download-artifact@v4
+        with:
+          name: diagnostico
+          path: ${{ runner.temp }}/aprobado
+      - uses: actions/download-artifact@v4
+        if: needs.implementar.result == 'success'
+        with:
+          name: implementacion
+          path: ${{ runner.temp }}/implementacion
+
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          IMPLEMENTAR: ${{ needs.implementar.result }}
+          GUARDIA: ${{ needs.implementar.outputs.guardia }}
+          PROBAR: ${{ needs.probar.result }}
+        run: |
+          impl="$RUNNER_TEMP/implementacion"
+          detenido() {
+            gh issue comment "$ISSUE" --body-file -
+            gh issue edit "$ISSUE" --add-label claude:bloqueado
+            # Solo esta si la ruta era corregir; si no esta, no hay nada que quitar.
+            gh issue edit "$ISSUE" --remove-label claude:evidente 2>/dev/null || true
+          }
+
+          if [[ "$IMPLEMENTAR" != success ]]; then
+            if [[ ! -f "$RUNNER_TEMP/marca/iniciado.txt" ]]; then
+              # Rechazaste la implementacion: queda solo el diagnostico.
+              gh issue edit "$ISSUE" --add-label claude:sin-aprobar
+              exit 0
+            fi
+            printf 'El harness no pudo terminar la implementación. No se publicó ningún cambio. Detalles y artefactos en [el run](%s).\n' "$RUN_URL" | detenido
+            exit 1
+          fi
+
+          if [[ "$GUARDIA" != ok ]]; then
+            python3 scripts/issue-harness.py secretos "$impl/guardia.txt"
+            # Los backticks entre comillas simples son markdown literal para GitHub.
+            # shellcheck disable=SC2016
+            { printf 'La guardia rechazó el cambio de Claude; no abrí PR.\n\n```\n'
+              cat "$impl/guardia.txt"
+              printf '```\n\nEl parche completo está en el artefacto `implementacion` de [el run](%s). Si igual quieres el cambio, se hace a mano o con `claude:reevaluar`.\n' "$RUN_URL"
+            } | detenido
+            exit 0
+          fi
+
+          if [[ "$PROBAR" != success ]]; then
+            # shellcheck disable=SC2016
+            printf 'Los tests de Linux fallaron con el cambio de Claude; no abrí PR. El log está en el artefacto `pruebas` de [el run](%s).\n' "$RUN_URL" | detenido
+            exit 0
+          fi
+
+          rama="claude/issue-$ISSUE-$GITHUB_RUN_ID"
+          git switch -c "$rama"
+          git apply --index "$impl/cambios.patch"
+          # Otra vez, sobre lo que de verdad se va a commitear.
+          git diff --cached --no-renames --numstat > "$RUNNER_TEMP/final.numstat"
+          python3 scripts/issue-harness.py guardia "$RUNNER_TEMP/aprobado/diagnostico.json" \
+            "$RUNNER_TEMP/final.numstat" --ruta "$RUTA"
+          git diff --cached > "$RUNNER_TEMP/final.patch"
+          titulo="$(python3 scripts/issue-harness.py titulo "$impl/implementacion.json" --issue "$ISSUE")"
+          python3 scripts/issue-harness.py pr "$RUNNER_TEMP/aprobado/diagnostico.json" "$impl/implementacion.json" \
+            --ruta "$RUTA" --issue "$ISSUE" --run-url "$RUN_URL" > "$RUNNER_TEMP/pr.md"
+          python3 scripts/issue-harness.py secretos "$RUNNER_TEMP/final.patch" "$RUNNER_TEMP/pr.md"
+
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -q -m "$titulo" -m "Propuesto por el harness de issues para el #$ISSUE. Run: $RUN_URL" \
+              -m "Co-Authored-By: Claude <noreply@anthropic.com>"
+          git push -q origin "$rama"
+
+          borrador=()
+          [[ "$RUTA" == confirmar ]] && borrador=(--draft)
+          url="$(gh pr create --base main --head "$rama" --title "$titulo" \
+                   --body-file "$RUNNER_TEMP/pr.md" "${borrador[@]}")"
+          # Un push con el token del workflow no dispara workflows: CI se pide
+          # explicito, y sus checks quedan en el commit del PR.
+          gh workflow run ci.yml --ref "$rama"
+          gh issue comment "$ISSUE" --body "Abrí $url con el cambio. CI corre sobre la rama; revísalo como cualquier otro PR antes de mergear."
+          gh issue edit "$ISSUE" --add-label claude:pr-abierto

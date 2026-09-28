@@ -74,6 +74,9 @@ jobs:
       - name: Herramientas de publicacion
         run: ./scripts/test-release-tooling.sh
 
+      - name: Harness de issues
+        run: ./scripts/test-issue-harness.sh
+
   # La revision automatica de un PR al marketplace. Valida las mascotas de este
   # repo y ademas clona y valida las que viven en repositorios de terceros: una
   # entrada que apunte a un paquete roto rompe `mascotuscan install` para todos.

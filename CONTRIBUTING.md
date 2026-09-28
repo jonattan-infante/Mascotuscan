@@ -9,6 +9,13 @@ make verify      # debe pasar antes de que toques nada
 make run         # arranca en primer plano, Ctrl-C para salir
 ```
 
+## Issues
+
+Un issue nuevo lo diagnostica Claude, pero solo cuando el dueño del repo aprueba
+la corrida. Si es un error evidente, el diagnóstico llega con un PR; si cambia
+cómo funciona algo, llega el diagnóstico y el PR espera confirmación. Cómo
+funciona y qué no puede hacer Claude: `docs/reference/claude-issues.md`.
+
 ## El gate
 
 `make verify` es el juez: compila, corre los tests de Swift, los de los hooks de

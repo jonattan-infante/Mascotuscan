@@ -22,6 +22,8 @@ dependencias; en Windows observa Claude Code directamente.
    - toco la versión, el release o el aviso de actualización → `docs/reference/versioning.md`
      (es el contrato: se implementa en Swift y en Python con los mismos tests)
    - voy a publicar o toco cómo se crean los tags → `docs/reference/tags.md`
+   - toco cómo Claude atiende issues → `docs/reference/claude-issues.md` (es el
+     contrato) + `docs/adr/0011`
 4. Al cerrar: actualizar `claude-progress.md` con la checklist del final de ese archivo.
 
 ## Comandos
@@ -170,6 +172,7 @@ que un pack está bien.
 | `VERSION` | la versión del producto; `CHANGELOG.md` lleva sus notas |
 | `registry.json` | el índice del marketplace |
 | `shell/pet.zsh` | hooks `preexec`/`precmd` y autoarranque |
+| `.github/claude/`, `scripts/issue-harness.py` | harness de issues: lo que se le pide a Claude y las reglas que deciden |
 | `docs/adr/` | decisiones durables. Insert-once: no se editan |
 | `docs/reference/` | contratos: formato de paquete, eventos de cmux, versionado y tags |
 
