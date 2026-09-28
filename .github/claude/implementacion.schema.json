@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["titulo_commit", "resumen", "archivos_cambiados", "pruebas", "notas"],
+  "properties": {
+    "titulo_commit": {"type": "string", "maxLength": 72, "description": "Conventional Commits en minuscula, por ejemplo fix(views): no cortar el nombre"},
+    "resumen": {"type": "string", "maxLength": 2000},
+    "archivos_cambiados": {"type": "array", "maxItems": 60, "items": {"type": "string", "maxLength": 500}},
+    "pruebas": {"type": "array", "maxItems": 60, "items": {"type": "string", "maxLength": 500}},
+    "notas": {"type": "array", "maxItems": 60, "items": {"type": "string", "maxLength": 500}}
+  }
+}

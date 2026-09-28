@@ -28,6 +28,7 @@ test-shell: ## Tests de shell, instalador, integridad y mascotas
 	./scripts/test-repo-integrity.sh
 	./scripts/test-pet-packs.sh
 	./scripts/test-release-tooling.sh
+	./scripts/test-issue-harness.sh
 
 test-windows: ## Tests del port de Windows (logica pura, corre en cualquier Python 3)
 	cd windows && /usr/bin/python3 -m unittest discover -s tests -p "test_*.py"

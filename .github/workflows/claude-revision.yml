@@ -1,0 +1,441 @@
+name: claude revisa PRs
+
+# Claude revisa cada PR hacia main: seguridad, calidad y los contratos del repo.
+# El status claude/revision lo pone scripts/revision-harness.py con reglas fijas
+# y bloquea el merge si hay un hallazgo critico o alto. Contrato y razones:
+# docs/reference/claude-revision.md, docs/adr/0012.
+#
+#   preparar  lee el PR y decide si hace falta tu aprobacion   sin Claude ni secretos
+#   revisar   Claude lee el PR, solo lectura                   fork o sensible: espera tu aprobacion
+#   publicar  comentario y status en el commit del PR          sin Claude
+
+on:
+  # pull_request_target y no pull_request: el workflow, el prompt y las reglas
+  # salen de main, nunca del PR. El codigo del PR se lee; nunca se ejecuta.
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  # El harness de issues abre PRs con el token del workflow, que no dispara
+  # pull_request_target: los manda a revisar por aqui.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Numero del PR
+        required: true
+
+permissions: {}
+
+# Un commit nuevo reemplaza la revision del anterior. Cualquier otra etiqueta
+# dispara este workflow solo para saltarlo: va a su propio grupo, porque en el
+# del PR cancelaria una revision en curso.
+concurrency:
+  group: >-
+    claude-revision-${{ github.event.pull_request.number || inputs.pr }}-${{
+    (github.event.action != 'labeled' || github.event.label.name == 'claude:revisar'
+    || github.event.label.name == 'claude:revision-anulada') && 'revision' || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+jobs:
+  preparar:
+    name: preparar
+    if: >-
+      github.event_name == 'workflow_dispatch' || github.event.action != 'labeled' ||
+      github.event.label.name == 'claude:revisar' || github.event.label.name == 'claude:revision-anulada'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Solo corre codigo de main. Escribe etiquetas y el status pendiente.
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      statuses: write
+    outputs:
+      pr: ${{ steps.pr.outputs.pr }}
+      sha: ${{ steps.pr.outputs.sha }}
+      base: ${{ steps.pr.outputs.base }}
+      accion: ${{ steps.pr.outputs.accion }}
+      aprobacion: ${{ steps.pr.outputs.aprobacion }}
+      sensible: ${{ steps.pr.outputs.sensible }}
+      fork: ${{ steps.pr.outputs.fork }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Leer el PR y decidir
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          ETIQUETA: ${{ github.event.action == 'labeled' && github.event.label.name || '' }}
+          QUIEN: ${{ github.event.sender.login }}
+          PRINCIPAL: ${{ github.event.repository.default_branch }}
+        run: |
+          [[ "$PR" =~ ^[0-9]+$ ]] || { echo "numero de PR invalido" >&2; exit 1; }
+          datos="$RUNNER_TEMP/pr-datos"
+          mkdir -p "$datos"
+          gh api "repos/$GH_REPO/pulls/$PR" > "$datos/pr.json"
+          gh api --paginate "repos/$GH_REPO/pulls/$PR/files" \
+            --jq '.[] | {f: .filename, p: .previous_filename}' > "$datos/archivos.jsonl"
+
+          sha="$(jq -r .head.sha "$datos/pr.json")"
+          base="$(jq -r .base.ref "$datos/pr.json")"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "sha invalido" >&2; exit 1; }
+          # Un fork borrado deja head.repo en null: cuenta como fork.
+          fork="$(jq -r 'if .head.repo.full_name == .base.repo.full_name then "no" else "si" end' "$datos/pr.json")"
+          sensible="$(python3 scripts/revision-harness.py sensible --api "$datos/archivos.jsonl" \
+                        --total "$(jq -r .changed_files "$datos/pr.json")")"
+          aprobacion=no
+          [[ "$fork" == si || "$sensible" == si ]] && aprobacion=si
+
+          if [[ "$(jq -r .state "$datos/pr.json")" != open || "$base" != "$PRINCIPAL" ]]; then
+            accion=omitir
+          elif [[ "$ETIQUETA" == claude:revision-anulada ]]; then
+            # La salida de emergencia ante un falso positivo es del duenio, no de
+            # cualquiera que pueda poner etiquetas.
+            permiso="$(gh api "repos/$GH_REPO/collaborators/$QUIEN/permission" --jq .permission || echo none)"
+            if [[ "$permiso" == admin ]]; then
+              accion=anular
+            else
+              # Esta corrida ya cancelo la revision en curso: se revisa de nuevo.
+              echo "::warning::$QUIEN no administra el repo: la anulacion no cuenta"
+              accion=revisar
+            fi
+          elif [[ "$(jq -r .draft "$datos/pr.json")" == true ]]; then
+            accion=borrador
+          else
+            accion=revisar
+          fi
+
+          {
+            echo "pr=$PR"
+            echo "sha=$sha"
+            echo "base=$base"
+            echo "fork=$fork"
+            echo "sensible=$sensible"
+            echo "aprobacion=$aprobacion"
+            echo "accion=$accion"
+          } >> "$GITHUB_OUTPUT"
+          echo "PR #$PR en $sha: accion=$accion fork=$fork sensible=$sensible"
+
+      - name: Etiquetas y status pendiente
+        if: steps.pr.outputs.accion != 'omitir'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ steps.pr.outputs.pr }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          ACCION: ${{ steps.pr.outputs.accion }}
+          APROBACION: ${{ steps.pr.outputs.aprobacion }}
+          FORK: ${{ steps.pr.outputs.fork }}
+          ETIQUETA: ${{ github.event.action == 'labeled' && github.event.label.name || '' }}
+        run: |
+          etiqueta() { gh label create "$1" --color "$2" --description "$3" --force >/dev/null; }
+          quitar() { gh api -X DELETE "repos/$GH_REPO/issues/$PR/labels/$1" >/dev/null 2>&1 || true; }
+          status() {
+            gh api "repos/$GH_REPO/statuses/$SHA" -f state=pending -f context=claude/revision \
+              -f description="$1" -f target_url="$RUN_URL" >/dev/null
+          }
+          etiqueta claude:revisar           c5def5 "Vuelve a pedir la revision de Claude de este PR"
+          etiqueta claude:revision-anulada  d93f0b "El duenio anulo la revision de Claude en este commit"
+          [[ "$ETIQUETA" == claude:revisar ]] && quitar claude:revisar
+
+          case "$ACCION" in
+            borrador) status "Borrador: Claude lo revisa cuando lo marques listo" ;;
+            revisar)
+              # Una anulacion vale para el commit en que se puso, no para los siguientes.
+              quitar claude:revision-anulada
+              if [[ "$APROBACION" == si && "$FORK" == si ]]; then
+                status "Espera tu aprobación: el PR viene de un fork"
+              elif [[ "$APROBACION" == si ]]; then
+                status "Espera tu aprobación: el PR toca las reglas de Claude o la publicación"
+              else
+                status "Claude está revisando este commit"
+              fi
+              ;;
+          esac
+
+      # revisar usa lo mismo que se leyo aqui para decidir.
+      - uses: actions/upload-artifact@v4
+        if: steps.pr.outputs.accion == 'revisar'
+        with:
+          name: pr-datos
+          path: ${{ runner.temp }}/pr-datos/
+          retention-days: 1
+          overwrite: true
+
+  revisar:
+    name: revisar${{ needs.preparar.outputs.aprobacion == 'si' && ' (con tu aprobación)' || '' }}
+    needs: preparar
+    if: needs.preparar.outputs.accion == 'revisar'
+    runs-on: ubuntu-latest
+    # Un PR de un fork o que toca las reglas de Claude espera tu aprobacion
+    # (claude). El resto sigue solo (claude-auto): su autor ya puede escribir en
+    # el repo. Los dos environments solo sirven desde main.
+    environment: ${{ needs.preparar.outputs.aprobacion == 'si' && 'claude' || 'claude-auto' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      estado: ${{ steps.veredicto.outputs.estado }}
+      descripcion: ${{ steps.veredicto.outputs.descripcion }}
+    env:
+      PR: ${{ needs.preparar.outputs.pr }}
+      SHA: ${{ needs.preparar.outputs.sha }}
+      BASE: ${{ needs.preparar.outputs.base }}
+    steps:
+      # Distingue "no se aprobo" de "se aprobo y fallo": publicar decide con esto.
+      - name: Marcar que la corrida se aprobo
+        run: echo "aprobado" > "$RUNNER_TEMP/iniciado.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: revisar-iniciado
+          path: ${{ runner.temp }}/iniciado.txt
+          retention-days: 90
+          overwrite: true
+
+      # main, con sus reglas. Sin credenciales en .git/config.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr-datos
+          path: ${{ runner.temp }}/pr-datos
+
+      # El codigo del PR, solo para leerlo: nada de aqui se ejecuta.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preparar.outputs.sha }}
+          path: claude-pr
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Preparar la entrada de Claude
+        id: entrada
+        env:
+          APROBACION: ${{ needs.preparar.outputs.aprobacion }}
+        run: |
+          # El harness se copia fuera del workspace antes de que corra Claude y se
+          # ejecuta desde ahi: nada de lo que pase despues en el workspace cambia
+          # las reglas.
+          mkdir -p "$RUNNER_TEMP/harness" claude-entrada claude-salida claude-registro
+          cp scripts/revision-harness.py scripts/harness_comun.py "$RUNNER_TEMP/harness/"
+          H="$RUNNER_TEMP/harness/revision-harness.py"
+          echo "H=$H" >> "$GITHUB_ENV"
+          printf '%s\n' 'claude-entrada/' 'claude-salida/' 'claude-registro/' 'claude-pr/' >> .git/info/exclude
+
+          [[ "$(git -C claude-pr rev-parse HEAD)" == "$SHA" ]] || { echo "el checkout no es $SHA" >&2; exit 1; }
+          # Sin drivers ni textconv: git no ejecuta nada que el PR declare.
+          git -C claude-pr diff --no-ext-diff --no-textconv --no-color "origin/$BASE...HEAD" > claude-entrada/cambios.diff
+          git -C claude-pr diff --no-renames --name-only -z "origin/$BASE...HEAD" > "$RUNNER_TEMP/nombres.z"
+          # Otra vez con la lista completa de git, sin el limite de la API y sobre
+          # el commit exacto: si toca algo sensible, esta corrida tenia que esperar
+          # tu aprobacion. En una asignacion y no dentro del [[ ]]: si el harness
+          # falla, el paso falla, en vez de leerse como "no sensible".
+          sensible="$(python3 "$H" sensible --git "$RUNNER_TEMP/nombres.z")"
+          if [[ "$sensible" == si && "$APROBACION" != si ]]; then
+            echo "el PR toca archivos sensibles y esta corrida no espero tu aprobacion" >&2
+            exit 1
+          fi
+          rm -rf claude-pr/.git
+
+          # Instrucciones de agentes del PR: datos, no instrucciones para Claude.
+          while IFS= read -r -d '' p; do mv -- "$p" "$p.pr"; done < <(
+            find claude-pr -depth \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name AGENTS.md -o -name .claude \) -print0)
+          # Un enlace simbolico del PR podria apuntar fuera del repo.
+          while IFS= read -r -d '' l; do
+            destino="$(readlink -- "$l")"
+            rm -- "$l"
+            printf '(enlace simbolico a %s; el harness lo quito para que Claude no lo siga)\n' "$destino" > "$l"
+          done < <(find claude-pr -type l -print0)
+
+          python3 "$H" entrada "$RUNNER_TEMP/pr-datos/pr.json" "$RUNNER_TEMP/pr-datos/archivos.jsonl" claude-entrada/pr.md
+          python3 "$H" deterministas claude-entrada/cambios.diff claude-salida/deterministas.json
+          {
+            echo 'prompt<<FIN_DEL_PROMPT'
+            cat .github/claude/revisar.md
+            echo 'FIN_DEL_PROMPT'
+            echo "esquema=$(jq -c . .github/claude/revision.schema.json)"
+            echo "settings=$(jq -c . .github/claude/settings.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Claude revisa (solo lectura)
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # El token del workflow, de solo lectura en este job.
+          github_token: ${{ github.token }}
+          # El autor de un fork no escribe en el repo: tu aprobacion del
+          # environment es la revision humana que la action pide para eso. El
+          # harness de issues pide revisiones como github-actions.
+          allowed_non_write_users: '*'
+          allowed_bots: github-actions
+          # En linea y no como ruta: se leyo de main antes de que la action corra.
+          settings: ${{ steps.entrada.outputs.settings }}
+          prompt: ${{ steps.entrada.outputs.prompt }}
+          claude_args: |
+            --max-turns 60
+            --allowedTools Read,Grep,Glob
+            --disallowedTools Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task
+            --json-schema '${{ steps.entrada.outputs.esquema }}'
+
+      # Por el entorno pasa solo la ruta del archivo de ejecucion: GitHub imprime
+      # el env de cada paso en el log, y la revision no puede verse en un log
+      # publico antes del escaneo.
+      - name: Guardar lo que produjo Claude
+        if: always() && steps.entrada.outcome == 'success'
+        env:
+          EJECUCION: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          cp claude-entrada/pr.md claude-entrada/cambios.diff claude-registro/
+          if [[ -z "$EJECUCION" || ! -f "$EJECUCION" ]]; then
+            echo "la action no dejo archivo de ejecucion" >&2
+            exit 1
+          fi
+          cp "$EJECUCION" claude-registro/ejecucion-revisar.json
+          python3 "$H" salida "$EJECUCION" claude-salida/revision.json
+
+      - name: Decidir (reglas fijas, no Claude)
+        id: veredicto
+        env:
+          SENSIBLE: ${{ needs.preparar.outputs.sensible }}
+          FORK: ${{ needs.preparar.outputs.fork }}
+        run: |
+          python3 "$H" validar claude-salida/revision.json
+          python3 "$H" veredicto claude-salida/revision.json claude-salida/deterministas.json >> "$GITHUB_OUTPUT"
+          opciones=()
+          [[ "$SENSIBLE" == si ]] && opciones+=(--sensible)
+          [[ "$FORK" == si ]] && opciones+=(--fork)
+          # El registro trae el codigo del PR; si tiene formas de credencial, no se sube.
+          python3 "$H" secretos claude-registro/* >/dev/null 2>&1 || opciones+=(--sin-ejecucion)
+          python3 "$H" comentario claude-salida/revision.json claude-salida/deterministas.json \
+            --repo-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" --sha "$SHA" --run-url "$RUN_URL" \
+            "${opciones[@]}" > claude-salida/comentario.md
+
+      - name: Escanear secretos antes de que nada salga
+        id: escaneo
+        if: always() && steps.entrada.outcome == 'success'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TOKEN_DEL_RUN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          salida=(claude-salida/*)
+          registro=(claude-registro/*)
+          python3 "$H" secretos --env CLAUDE_CODE_OAUTH_TOKEN --env TOKEN_DEL_RUN "${salida[@]}"
+          (( ${#registro[@]} )) || exit 0
+          # El valor exacto de un token nuestro no sale por ningun lado, ni en el registro.
+          python3 "$H" secretos --env CLAUDE_CODE_OAUTH_TOKEN --env TOKEN_DEL_RUN --solo-valores "${registro[@]}"
+          if python3 "$H" secretos "${registro[@]}"; then
+            mv "${registro[@]}" claude-salida/
+          else
+            echo "el registro tiene formas de credencial, probablemente del PR: no se sube"
+          fi
+
+      # Solo si el escaneo paso: los artefactos de un repo publico los puede bajar
+      # cualquiera.
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.escaneo.outcome == 'success'
+        with:
+          name: revision
+          path: claude-salida/
+          retention-days: 90
+          overwrite: true
+
+  publicar:
+    name: publicar
+    needs: [preparar, revisar]
+    # !cancelled() y no always(): una corrida que reemplazo un commit nuevo no
+    # publica nada.
+    if: >-
+      !cancelled() && needs.preparar.result == 'success' &&
+      (needs.preparar.outputs.accion == 'revisar' || needs.preparar.outputs.accion == 'anular')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Claude nunca corrio aqui y aqui no esta su token.
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    env:
+      PR: ${{ needs.preparar.outputs.pr }}
+      SHA: ${{ needs.preparar.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        if: needs.preparar.outputs.accion == 'revisar'
+        continue-on-error: true
+        with:
+          name: revisar-iniciado
+          path: ${{ runner.temp }}/marca
+      - uses: actions/download-artifact@v4
+        if: needs.revisar.result == 'success'
+        with:
+          name: revision
+          path: ${{ runner.temp }}/revision
+
+      - name: Publicar en el PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ACCION: ${{ needs.preparar.outputs.accion }}
+          REVISAR: ${{ needs.revisar.result }}
+          ESTADO: ${{ needs.revisar.outputs.estado }}
+          DESCRIPCION: ${{ needs.revisar.outputs.descripcion }}
+          QUIEN: ${{ github.event.sender.login }}
+        run: |
+          H=scripts/revision-harness.py
+          status() {
+            gh api "repos/$GH_REPO/statuses/$SHA" -f state="$1" -f context=claude/revision \
+              -f description="$2" -f target_url="$RUN_URL" >/dev/null
+          }
+          # Un solo comentario por PR, que se actualiza: el del bot que empieza
+          # con la marca. Un comentario del autor con la marca no cuenta.
+          comentar() {
+            python3 "$H" secretos "$1"
+            id="$(gh api --paginate "repos/$GH_REPO/issues/$PR/comments" \
+                    --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- claude-revision -->"))) | .id' \
+                  | tail -n1)"
+            if [[ -n "$id" ]]; then
+              gh api -X PATCH "repos/$GH_REPO/issues/comments/$id" -F body=@"$1" >/dev/null
+            else
+              gh api "repos/$GH_REPO/issues/$PR/comments" -F body=@"$1" >/dev/null
+            fi
+          }
+          c="$RUNNER_TEMP/comentario.md"
+
+          if [[ "$ACCION" == anular ]]; then
+            python3 "$H" anulada --actor "$QUIEN" --sha "$SHA" --run-url "$RUN_URL" > "$c"
+            comentar "$c"
+            status success "Anulada por $QUIEN en este commit"
+            exit 0
+          fi
+
+          if [[ "$REVISAR" == success ]]; then
+            [[ "$ESTADO" == success || "$ESTADO" == failure ]] || { echo "estado invalido: $ESTADO" >&2; exit 1; }
+            comentar "$RUNNER_TEMP/revision/comentario.md"
+            status "$ESTADO" "$DESCRIPCION"
+            exit 0
+          fi
+
+          if [[ ! -f "$RUNNER_TEMP/marca/iniciado.txt" ]]; then
+            # Rechazada o vencida la aprobacion: Claude no corrio.
+            python3 "$H" aviso sin-aprobar --sha "$SHA" --run-url "$RUN_URL" > "$c"
+            comentar "$c"
+            status failure "Nadie aprobó la revisión de Claude"
+            exit 0
+          fi
+          python3 "$H" aviso fallo --sha "$SHA" --run-url "$RUN_URL" > "$c"
+          comentar "$c"
+          status error "La revisión de Claude falló: ver el run"
+          exit 1
