@@ -228,6 +228,11 @@ class TextoTests(unittest.TestCase):
         self.assertIn("`@jonattan-infante`", s)
         self.assertIn("`@otro`", s)
 
+    def test_comillas_escapadas_se_ven_limpias(self):
+        # Caso real del issue #20: Claude escribio las comillas con su escape JSON.
+        self.assertEqual(h.neutralizar('El comando ya existe: \\"mascotuscan use astro\\"'),
+                         'El comando ya existe: "mascotuscan use astro"')
+
     def test_un_correo_no_es_una_mencion(self):
         self.assertEqual(h.neutralizar("escribe a a@b.com"), "escribe a a@b.com")
 
@@ -253,6 +258,70 @@ class TextoTests(unittest.TestCase):
     def test_evento_sin_issue_falla(self):
         with self.assertRaises(h.Invalido):
             h.extraer_issue({"pull_request": {}})
+
+
+class SalidaTests(unittest.TestCase):
+    """ La forma del archivo de ejecucion es la de claude-code-action@v1
+    (base-action/src/execution-file.ts): la lista de mensajes del SDK. """
+
+    def mensajes(self, resultado):
+        return [
+            {"type": "system", "subtype": "init", "session_id": "s"},
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": "leyendo"}]}},
+            resultado,
+        ]
+
+    def test_saca_la_salida_del_mensaje_de_resultado(self):
+        d = diagnostico()
+        salida = h.extraer_salida(self.mensajes({"type": "result", "subtype": "success",
+                                                 "structured_output": d}))
+        self.assertEqual(salida, d)
+
+    def test_resultado_sin_salida_falla(self):
+        with self.assertRaises(h.Invalido):
+            h.extraer_salida(self.mensajes({"type": "result", "subtype": "error_max_turns"}))
+
+    def test_sin_resultado_falla(self):
+        with self.assertRaises(h.Invalido):
+            h.extraer_salida([{"type": "system", "subtype": "init"}])
+
+    def test_no_es_una_lista(self):
+        with self.assertRaises(h.Invalido):
+            h.extraer_salida({"type": "result"})
+
+    def test_cli_escribe_el_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            ejecucion = self.mensajes({"type": "result", "structured_output": diagnostico()})
+            (tmp / "e.json").write_text(json.dumps(ejecucion), encoding="utf-8")
+            self.assertEqual(h.main(["salida", str(tmp / "e.json"), str(tmp / "d.json")]), 0)
+            self.assertEqual(h.main(["validar", str(tmp / "d.json")]), 0)
+
+
+class DetenidoTests(unittest.TestCase):
+    RUN = "https://github.com/o/r/actions/runs/1"
+
+    def test_sin_cambios_cuenta_lo_que_dijo_claude(self):
+        # Caso real del issue #21: el plan pedia un ADR que no existia.
+        impl = implementacion(resumen="No hice cambios: falta el ADR.",
+                              notas=["El plan exige decidir primero, avisa a @alguien."])
+        texto = h.detenido("guardia: rechazada\n- Claude no cambio ningun archivo\n", impl, self.RUN)
+        self.assertTrue(texto.startswith("Claude no cambió ningún archivo"))
+        self.assertIn("**Lo que explicó Claude.** No hice cambios: falta el ADR.", texto)
+        self.assertIn("`@alguien`", texto)
+        self.assertNotIn("```", texto)
+
+    def test_rechazo_muestra_la_guardia_y_a_claude(self):
+        guardia = "guardia: rechazada\n- .github/workflows/ci.yml: el harness nunca modifica este archivo\n"
+        texto = h.detenido(guardia, implementacion(), self.RUN)
+        self.assertTrue(texto.startswith("La guardia rechazó el cambio de Claude"))
+        self.assertIn("el harness nunca modifica este archivo", texto)
+        self.assertIn("**Lo que explicó Claude.**", texto)
+
+    def test_sin_respuesta_de_claude_igual_sale(self):
+        texto = h.detenido("guardia: rechazada\n- Claude no cambio ningun archivo\n", None, self.RUN)
+        self.assertIn("artefacto `implementacion`", texto)
+        self.assertNotIn("Lo que explicó Claude", texto)
 
 
 class EsquemaTests(unittest.TestCase):

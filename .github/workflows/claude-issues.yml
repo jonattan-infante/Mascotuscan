@@ -97,17 +97,21 @@ jobs:
             --disallowedTools Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task
             --json-schema '${{ steps.entrada.outputs.esquema }}'
 
+      # Por el entorno pasa solo la ruta del archivo de ejecucion: GitHub imprime
+      # el env de cada paso en el log, y el diagnostico no puede verse en un log
+      # publico antes del escaneo.
       - name: Guardar lo que produjo Claude
         if: always() && steps.entrada.outcome == 'success'
         env:
-          SALIDA: ${{ steps.claude.outputs.structured_output }}
           EJECUCION: ${{ steps.claude.outputs.execution_file }}
         run: |
           cp claude-entrada/issue.md claude-salida/issue.md
-          if [[ -n "$SALIDA" ]]; then printf '%s' "$SALIDA" > claude-salida/diagnostico.json; fi
-          if [[ -n "$EJECUCION" && -f "$EJECUCION" ]]; then
-            cp "$EJECUCION" claude-salida/ejecucion-evaluar.json
+          if [[ -z "$EJECUCION" || ! -f "$EJECUCION" ]]; then
+            echo "la action no dejo archivo de ejecucion" >&2
+            exit 1
           fi
+          cp "$EJECUCION" claude-salida/ejecucion-evaluar.json
+          python3 scripts/issue-harness.py salida "$EJECUCION" claude-salida/diagnostico.json
 
       - name: Decidir la ruta (reglas fijas, no Claude)
         id: ruta
@@ -272,20 +276,22 @@ jobs:
             --disallowedTools Bash,NotebookEdit,WebFetch,WebSearch,Task
             --json-schema '${{ steps.entrada.outputs.esquema }}'
 
+      # Igual que en evaluar: la salida de Claude se lee del archivo, no del env.
       - name: Guardar lo que produjo Claude
         if: always() && steps.entrada.outcome == 'success'
         env:
-          SALIDA: ${{ steps.claude.outputs.structured_output }}
           EJECUCION: ${{ steps.claude.outputs.execution_file }}
         run: |
-          if [[ -n "$SALIDA" ]]; then printf '%s' "$SALIDA" > claude-salida/implementacion.json; fi
-          if [[ -n "$EJECUCION" && -f "$EJECUCION" ]]; then
-            cp "$EJECUCION" claude-salida/ejecucion-implementar.json
-          fi
           git add -A
           git diff --cached --no-renames > claude-salida/cambios.patch
           git diff --cached --no-renames --numstat > claude-salida/cambios.numstat
           git diff --cached --no-renames --stat
+          if [[ -z "$EJECUCION" || ! -f "$EJECUCION" ]]; then
+            echo "la action no dejo archivo de ejecucion" >&2
+            exit 1
+          fi
+          cp "$EJECUCION" claude-salida/ejecucion-implementar.json
+          python3 scripts/issue-harness.py salida "$EJECUCION" claude-salida/implementacion.json
 
       - name: Guardia (reglas fijas, no Claude)
         id: guardia
@@ -422,13 +428,10 @@ jobs:
           fi
 
           if [[ "$GUARDIA" != ok ]]; then
-            python3 scripts/issue-harness.py secretos "$impl/guardia.txt"
-            # Los backticks entre comillas simples son markdown literal para GitHub.
-            # shellcheck disable=SC2016
-            { printf 'La guardia rechazó el cambio de Claude; no abrí PR.\n\n```\n'
-              cat "$impl/guardia.txt"
-              printf '```\n\nEl parche completo está en el artefacto `implementacion` de [el run](%s). Si igual quieres el cambio, se hace a mano o con `claude:reevaluar`.\n' "$RUN_URL"
-            } | detenido
+            python3 scripts/issue-harness.py detenido "$impl/guardia.txt" "$impl/implementacion.json" \
+              --run-url "$RUN_URL" > "$RUNNER_TEMP/detenido.md"
+            python3 scripts/issue-harness.py secretos "$RUNNER_TEMP/detenido.md"
+            detenido < "$RUNNER_TEMP/detenido.md"
             exit 0
           fi
 

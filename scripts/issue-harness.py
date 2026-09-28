@@ -7,6 +7,7 @@
 # bien, y se puede auditar leyendo codigo. Contrato: docs/reference/claude-issues.md.
 #
 #   issue-harness.py issue <evento.json> <salida.md>
+#   issue-harness.py salida <ejecucion.json> <destino.json>
 #   issue-harness.py validar <diagnostico.json>
 #   issue-harness.py validar-impl <implementacion.json>
 #   issue-harness.py ruta <diagnostico.json> [--informe <motivos.txt>]
@@ -15,6 +16,7 @@
 #   issue-harness.py secretos [--env NOMBRE]... <archivo>...
 #   issue-harness.py titulo <implementacion.json> --issue N
 #   issue-harness.py pr <diagnostico.json> <implementacion.json> --ruta R --issue N --run-url U
+#   issue-harness.py detenido <guardia.txt> <implementacion.json> --run-url U
 
 import argparse
 import json
@@ -336,9 +338,28 @@ def limpiar_entrada(s):
 def neutralizar(s):
     """ Lo que escribe Claude se publica en GitHub. Una mencion notificaria a
     alguien por un texto que ningun humano escribio; en un bloque de codigo no
-    notifica. Los comentarios HTML esconderian texto del lector. """
-    s = limpiar_entrada(s)
+    notifica. Los comentarios HTML esconderian texto del lector. Las comillas
+    escapadas son un resto del JSON que a veces Claude escribe dentro del texto:
+    en markdown se verian con la barra. """
+    s = limpiar_entrada(s).replace('\\"', '"')
     return MENCION.sub(lambda m: f"`@{m.group(1)}`", s)
+
+
+def extraer_salida(mensajes):
+    """ El archivo de ejecucion de claude-code-action es la lista de mensajes
+    del SDK, y el ultimo de tipo 'result' trae structured_output. Se lee de ahi
+    y no de la salida del paso de la action porque GitHub imprime en el log el
+    entorno de cada paso: el diagnostico se veria en un log publico antes de
+    pasar por el escaneo de secretos. """
+    if not isinstance(mensajes, list):
+        raise Invalido("el archivo de ejecucion no es una lista de mensajes")
+    for m in reversed(mensajes):
+        if isinstance(m, dict) and m.get("type") == "result":
+            salida = m.get("structured_output")
+            if not isinstance(salida, dict):
+                raise Invalido("el resultado de Claude no trae structured_output")
+            return salida
+    raise Invalido("el archivo de ejecucion no tiene un mensaje de resultado")
 
 
 def extraer_issue(evento):
@@ -488,6 +509,30 @@ def cuerpo_pr(d, impl, ruta, issue, run_url):
     return "\n".join(lineas)
 
 
+def detenido(guardia, impl, run_url):
+    """ El comentario cuando la guardia no deja publicar. Lleva lo que dijo
+    Claude: sin eso, el issue solo muestra que no hubo PR y el porque queda
+    enterrado en un artefacto. """
+    t = neutralizar
+    problemas = [l for l in guardia.splitlines() if l.startswith("- ")]
+    sin_cambios = problemas == ["- Claude no cambio ningun archivo"]
+    if sin_cambios:
+        lineas = ["Claude no cambió ningún archivo, así que no abrí PR.", ""]
+    else:
+        lineas = ["La guardia rechazó el cambio de Claude; no abrí PR.", "", "```", guardia.strip(), "```", ""]
+    if impl:
+        lineas += ["**Lo que explicó Claude.** " + t(impl["resumen"]), ""]
+        lineas += [f"- {t(n)}" for n in impl["notas"]]
+        if impl["notas"]:
+            lineas.append("")
+    lineas.append(
+        f"El parche, la guardia y la conversación completa de Claude están en el artefacto "
+        f"`implementacion` de [el run]({run_url}). Si igual quieres el cambio, se hace a mano "
+        "o con `claude:reevaluar`."
+    )
+    return "\n".join(lineas) + "\n"
+
+
 # ------------------------------------------------------------------ CLI
 
 def _cargar(path):
@@ -513,6 +558,10 @@ def main(argv=None):
     p = sub.add_parser("issue")
     p.add_argument("evento")
     p.add_argument("salida")
+
+    p = sub.add_parser("salida")
+    p.add_argument("ejecucion")
+    p.add_argument("destino")
 
     sub.add_parser("validar").add_argument("diagnostico")
     sub.add_parser("validar-impl").add_argument("implementacion")
@@ -549,12 +598,22 @@ def main(argv=None):
     p.add_argument("--issue", required=True, type=int)
     p.add_argument("--run-url", required=True)
 
+    p = sub.add_parser("detenido")
+    p.add_argument("guardia")
+    p.add_argument("implementacion")
+    p.add_argument("--run-url", required=True)
+
     a = ap.parse_args(argv)
     try:
         if a.cmd == "issue":
             texto = extraer_issue(_cargar(a.evento))
             with open(a.salida, "w", encoding="utf-8") as f:
                 f.write(texto)
+        elif a.cmd == "salida":
+            salida = extraer_salida(_cargar(a.ejecucion))
+            with open(a.destino, "w", encoding="utf-8") as f:
+                json.dump(salida, f, ensure_ascii=False, indent=2)
+            print(f"salida de Claude con {len(salida)} campo(s) en {a.destino}")
         elif a.cmd == "validar":
             _validado(a.diagnostico, validar_diagnostico)
             print("diagnostico valido")
@@ -598,6 +657,17 @@ def main(argv=None):
             print(f"sin secretos en {len(textos)} archivo(s)")
         elif a.cmd == "titulo":
             print(titulo_commit(_validado(a.implementacion, validar_implementacion), a.issue))
+        elif a.cmd == "detenido":
+            with open(a.guardia, encoding="utf-8") as f:
+                guardia = f.read()
+            # Sin respuesta valida de Claude el comentario sale igual: callar
+            # porque falta una parte seria un fallo silencioso.
+            try:
+                impl = _validado(a.implementacion, validar_implementacion)
+            except Invalido as e:
+                print(f"aviso: {e}", file=sys.stderr)
+                impl = None
+            sys.stdout.write(detenido(guardia, impl, a.run_url))
         elif a.cmd == "pr":
             d = _validado(a.diagnostico, validar_diagnostico)
             impl = _validado(a.implementacion, validar_implementacion)
