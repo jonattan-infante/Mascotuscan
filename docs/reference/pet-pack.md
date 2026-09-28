@@ -92,14 +92,17 @@ válido.
 Cada imagen animada empieza en su primer cuadro cuando aparece (al entrar al
 estado, o al dejar de moverse) y después se repite. Así un estado puede tener un
 gesto de una sola vez: `done` dura 3 s, y una imagen de 3 s para `done` se ve
-entera, de principio a fin.
+entera, de principio a fin. Solo en macOS por ahora: en Windows las imágenes
+avanzan un cuadro por tick con un contador común y no reinician al aparecer; se
+porta junto con `roam` (`docs/adr/0013`).
 
 ### Recorrer la pantalla (`roam`)
 
-Opcional, y cada mascota decide si lo quiere. Con `roam`, mientras hay al menos
-un agente trabajando la mascota rueda (o camina) hasta el borde de la pantalla,
-da la vuelta en espejo y sigue de borde a borde; cuando ya no hay trabajo,
-vuelve a su lugar y se queda ahí. Ver `docs/adr/0013`.
+Opcional, solo para mascotas con imágenes (`"renderer": "sprites"`), y cada
+mascota decide si lo quiere. Con `roam`, mientras hay al menos un agente
+trabajando la mascota rueda (o camina) hasta el borde de la pantalla, da la
+vuelta en espejo y sigue de borde a borde; cuando ya no hay trabajo, vuelve a su
+lugar y se queda ahí. Ver `docs/adr/0013`.
 
 ```json
 "roam": {
@@ -123,10 +126,12 @@ Reglas del dibujo:
   que si miden distinto la mascota cambia de tamaño al arrancar.
 - **`start` termina en el primer cuadro de `loop`**, y empieza en la pose de
   reposo: al frenar se reproduce al revés y tiene que quedar como estaba.
-- **Cada cuadro dura lo que declara**, en GIF, PNG animado, WebP o HEICS; menos
-  de 20 ms cuenta como 100 ms, como en los navegadores. Una pausa conviene
-  escribirla como un solo cuadro largo y no como muchos iguales: cada cuadro
-  distinto ocupa memoria. Hasta la 0.4.0, en macOS un PNG animado tomaba la
+- **Cada cuadro dura lo que declara**, en GIF, PNG animado, WebP o HEICS (en
+  macOS); menos de 20 ms cuenta como 100 ms, como en los navegadores. En un
+  TIFF o un HEIC, varias imágenes son la misma a otros tamaños y se dibujan
+  quietas. Una pausa conviene escribirla como un solo cuadro largo y no como
+  muchos iguales: la imagen que se ve guarda sus cuadros ya decodificados, y una
+  que no cabe en 16 MB se decodifica cuadro a cuadro, con más CPU. Hasta la 0.4.0, en macOS un PNG animado tomaba la
   duración del primer cuadro para todos; si el pack tiene que verse bien ahí,
   todos los cuadros con la misma duración.
 - **`speed` sin patinar**: si el cuerpo rueda, la velocidad es el perímetro de la
@@ -238,8 +243,10 @@ Dos reglas que cuestan errores si se olvidan:
 - Si `renderer = "sprites"`, cada ruta declarada existe dentro del pack y no se
   escapa de la carpeta (`..` prohibido).
 - Los colores de `accent` son `#RRGGBB`.
-- Si hay `roam`: es un objeto; `loop` (y `start`, si está) existe dentro del
-  paquete sin `..`; `speed` es un número entre 10 y 400.
+- Si hay `roam`: `renderer` es `"sprites"`; es un objeto; `loop` (y `start`, si
+  está) es un archivo, no una carpeta, dentro del paquete sin `..`; `speed` es un
+  número entre 10 y 400. Si `loop` existe pero no se puede abrir como imagen, la
+  mascota no se mueve y lo dice en pantalla.
 - `persona.md` existe y no está vacío.
 - Si hay `phrases.json`: es JSON válido, y **cada clase declarada conserva al
   menos una plantilla** después de validar marcadores. Una clase que se queda en

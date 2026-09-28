@@ -231,11 +231,13 @@ final class PetPackTests: XCTestCase {
 
     // MARK: recorrer la pantalla (roam)
 
-    private func writeRoamPack(_ roam: String, files: [String] = ["sprites/arranque.png", "sprites/rueda.png"]) throws {
+    private func writeRoamPack(_ roam: String, renderer: String = "sprites",
+                               files: [String] = ["sprites/arranque.png", "sprites/rueda.png"]) throws {
         try FileManager.default.createDirectory(at: dir.appendingPathComponent("sprites"),
                                                 withIntermediateDirectories: true)
         for f in files { try write(f, "x") }
-        try write("pet.json", manifest(extra: "\"roam\": \(roam)"))
+        let sprites = renderer == "sprites" ? #""sprites": {"default": "sprites/rueda.png"}, "# : ""
+        try write("pet.json", manifest(renderer: renderer, extra: sprites + "\"roam\": \(roam)"))
         try write("persona.md", "Eres una mascota de prueba. Hablas corto.")
     }
 
@@ -290,5 +292,21 @@ final class PetPackTests: XCTestCase {
     func testRoamQueNoEsObjetoFalla() throws {
         try writeRoamPack("true")
         guard case .badRoam = loadError() else { return XCTFail("deberia fallar") }
+    }
+
+    /// Una carpeta existe, pero no es una imagen: sin esto, `validate` decia ok y
+    /// la mascota se deslizaba sin animacion.
+    func testRoamQueApuntaAUnaCarpetaFalla() throws {
+        try writeRoamPack(#"{"loop": "sprites", "speed": 73}"#)
+        guard case .badRoam(let why) = loadError() else { return XCTFail("deberia fallar") }
+        XCTAssertTrue(why.contains("carpeta"), why)
+    }
+
+    /// `roam` es de imagenes (docs/adr/0013): un droide vectorial no sabe mirar
+    /// hacia donde va.
+    func testRoamEnUnaMascotaVectorialFalla() throws {
+        try writeRoamPack(#"{"loop": "sprites/rueda.png", "speed": 73}"#, renderer: "vector:droid")
+        guard case .badRoam(let why) = loadError() else { return XCTFail("deberia fallar") }
+        XCTAssertTrue(why.contains("renderer"), why)
     }
 }
