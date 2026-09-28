@@ -1,5 +1,5 @@
 // Los sprites animados: que cada cuadro dure lo que declara y que se decodifique
-// una sola vez. Las dos cosas fallaban con NSBitmapImageRep (docs/adr/0011): los
+// una sola vez. Las dos cosas fallaban con NSBitmapImageRep (docs/adr/0013): los
 // PNG animados duraban lo del primer cuadro, y cada dibujo descomprimia de nuevo.
 
 import XCTest

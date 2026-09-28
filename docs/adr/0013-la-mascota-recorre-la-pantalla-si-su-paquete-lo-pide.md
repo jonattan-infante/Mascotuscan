@@ -1,4 +1,4 @@
-# ADR 0011 — La mascota recorre la pantalla si su paquete lo pide
+# ADR 0013 — La mascota recorre la pantalla si su paquete lo pide
 
 - **Estado:** aceptada
 - **Fecha:** 2026-09-27

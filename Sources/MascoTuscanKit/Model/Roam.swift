@@ -1,6 +1,6 @@
 // Recorrer la pantalla: mientras hay trabajo, la mascota rueda hasta el borde,
 // da la vuelta en espejo y sigue; al terminar vuelve a su lugar. Solo si su
-// paquete lo declara (bloque `roam` de pet.json). Ver docs/adr/0011 y
+// paquete lo declara (bloque `roam` de pet.json). Ver docs/adr/0013 y
 // docs/reference/pet-pack.md.
 //
 // Es un modelo puro: recibe el tiempo, a donde quiere ir y los bordes, y dice

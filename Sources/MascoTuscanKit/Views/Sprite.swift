@@ -1,7 +1,7 @@
 // Sprites del usuario, incluidos GIF y PNG animados.
 //
 // Los cuadros se leen con ImageIO y no con NSBitmapImageRep, por dos defectos
-// medidos el 2026-09-27 (ver docs/adr/0011):
+// medidos el 2026-09-27 (ver docs/adr/0013):
 //   1. NSBitmapImageRep descomprime el cuadro en cada dibujo. A 30 fps eso era
 //      el 44 % del tiempo activo del hilo principal (`sample`), y en un PNG
 //      animado componer un cuadro obliga a decodificar los anteriores.

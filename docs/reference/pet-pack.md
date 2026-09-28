@@ -99,7 +99,7 @@ entera, de principio a fin.
 Opcional, y cada mascota decide si lo quiere. Con `roam`, mientras hay al menos
 un agente trabajando la mascota rueda (o camina) hasta el borde de la pantalla,
 da la vuelta en espejo y sigue de borde a borde; cuando ya no hay trabajo,
-vuelve a su lugar y se queda ahí. Ver `docs/adr/0011`.
+vuelve a su lugar y se queda ahí. Ver `docs/adr/0013`.
 
 ```json
 "roam": {

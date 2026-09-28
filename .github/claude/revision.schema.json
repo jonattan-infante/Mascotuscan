@@ -1,0 +1,80 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "veredicto",
+    "resumen",
+    "hallazgos"
+  ],
+  "properties": {
+    "veredicto": {
+      "enum": [
+        "aprobar",
+        "cambios",
+        "bloquear"
+      ],
+      "description": "bloquear si y solo si hay un hallazgo critica o alta; cambios si hay alguno media; aprobar si no"
+    },
+    "resumen": {
+      "type": "string",
+      "maxLength": 1500,
+      "description": "De 1 a 3 oraciones: que hace el PR y por que el veredicto"
+    },
+    "hallazgos": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "severidad",
+          "categoria",
+          "archivo",
+          "lineas",
+          "problema",
+          "sugerencia"
+        ],
+        "properties": {
+          "severidad": {
+            "enum": [
+              "critica",
+              "alta",
+              "media",
+              "baja"
+            ],
+            "description": "ver .github/claude/revisar.md; critica y alta bloquean el merge"
+          },
+          "categoria": {
+            "enum": [
+              "seguridad",
+              "calidad",
+              "pruebas",
+              "contrato",
+              "documentacion"
+            ]
+          },
+          "archivo": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "ruta relativa al repo, sin claude-pr/; vacia solo si el hallazgo es sobre el PR entero"
+          },
+          "lineas": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "en la version del PR, como 12 o 12-20; vacia solo si archivo lo esta"
+          },
+          "problema": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "que falla y en que caso concreto; nunca copies una credencial"
+          },
+          "sugerencia": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "el cambio concreto que lo resuelve"
+          }
+        }
+      }
+    }
+  }
+}

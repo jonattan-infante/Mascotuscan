@@ -1,6 +1,6 @@
 // Recorrer la pantalla: hasta el borde, vuelta en espejo, y a casa al terminar.
 // Es lo que el autor pidio, y cada regla aqui es una de esas decisiones. Ver
-// docs/adr/0011.
+// docs/adr/0013.
 
 import XCTest
 @testable import MascoTuscanKit
