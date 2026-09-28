@@ -192,3 +192,54 @@ final class CelebrarAlTerminarTests: XCTestCase {
         XCTAssertEqual(clock.time(showing: "quieto", now: 107), 0, "volver a una imagen la reinicia")
     }
 }
+
+/// Quieta solo si la vas a tocar. Medido el 2026-09-28 en `pet.log`: Claude Code
+/// avisa `attention` 60 s despues de cada turno que queda sin respuesta, y esa
+/// sesion sigue en `attention` hasta que le vuelvas a escribir. Si eso la
+/// detenia, con varias sesiones abiertas no volvia a rodar.
+final class QuietaSoloSiLaVasATocarTests: XCTestCase {
+    func makeController() -> PetController {
+        let pc = PetController()
+        pc.config = PetConfig()
+        pc.ingest(NormalizedEvent(source: "t", name: .sessionStart, sessionId: "trabaja", agent: "Claude"))
+        return pc
+    }
+
+    func testUnAgenteEsperandoRespuestaNoLaDetiene() {
+        let pc = makeController()
+        pc.ingest(NormalizedEvent(source: "t", name: .notification, sessionId: "espera",
+                                  agent: "Claude", reason: .generic))
+        XCTAssertTrue(pc.attentionSessions.contains("espera"))
+        XCTAssertEqual(pc.roamGoal(), .roam)
+    }
+
+    func testConElMouseSobreLaBurbujaSeDetiene() {
+        let pc = makeController()
+        pc.ingest(NormalizedEvent(source: "t", name: .notification, sessionId: "espera",
+                                  agent: "Claude", reason: .generic))
+        pc.bubbleHovered = true
+        XCTAssertEqual(pc.roamGoal(), .hold)
+        pc.bubbleHovered = false
+        XCTAssertEqual(pc.roamGoal(), .roam)
+    }
+
+    /// Una burbuja que se esconde con el mouse encima no avisa que salio: ese
+    /// dato viejo no puede dejar quieta a la mascota con la burbuja siguiente.
+    func testElMouseViejoNoFrenaLaBurbujaSiguiente() {
+        let pc = makeController()
+        pc.ingest(NormalizedEvent(source: "t", name: .notification, sessionId: "espera",
+                                  agent: "Claude", reason: .generic))
+        pc.bubbleHovered = true
+        pc.hideBubble()
+        pc.ingest(NormalizedEvent(source: "t", name: .notification, sessionId: "otra",
+                                  agent: "Claude", reason: .generic))
+        XCTAssertNotNil(pc.currentBubble)
+        XCTAssertEqual(pc.roamGoal(), .roam)
+    }
+
+    func testConElMouseSobreLaMascotaSeDetiene() {
+        let pc = makeController()
+        pc.hovering = true
+        XCTAssertEqual(pc.roamGoal(), .hold)
+    }
+}

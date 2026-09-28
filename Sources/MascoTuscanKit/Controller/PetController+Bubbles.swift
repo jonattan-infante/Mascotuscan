@@ -110,6 +110,9 @@ extension PetController {
         bubbleTimer = nil
         currentBubble = nil
         bubbleView.bubble = nil
+        // Escondida con el mouse encima no llega `mouseExited`: sin esto la
+        // proxima burbuja la dejaria quieta sin nadie encima.
+        bubbleHovered = false
         layout()
     }
 

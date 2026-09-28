@@ -47,7 +47,7 @@ Objetivo, en este orden:
 
 | Situación | Objetivo |
 |---|---|
-| mouse encima, permiso o pregunta con botones, o un agente en `attention` | `hold`: se detiene donde está |
+| mouse sobre la mascota o sobre su burbuja | `hold`: se detiene donde está |
 | algo acaba de terminar (`done`, 3 s) | `hold`: celebra quieta |
 | al menos un agente trabajando | `roam`: de borde a borde |
 | nada en curso | `home`: vuelve a su lugar |
@@ -80,8 +80,17 @@ el lugar nuevo es a donde vuelve.
 - **Moverse todas las mascotas.** El autor lo quiso por mascota; además una
   mascota vectorial o un sprite que no está pensado para caminar se vería
   deslizándose.
-- **Seguir moviéndose con el mouse encima o con una pregunta abierta.** Rompe
-  la respuesta desde la burbuja de `docs/adr/0009`.
+- **Seguir moviéndose con el mouse encima.** Rompe la respuesta desde la
+  burbuja de `docs/adr/0009`: con el mouse sobre la mascota o sobre la burbuja
+  se detiene al instante (frenar no la desplaza), y ya se le puede hacer clic.
+- **Detenerse mientras un agente espera respuesta (`attention`) o mientras hay
+  una pregunta con botones.** Fue la primera versión y dejó a la mascota sin
+  rodar. Medido el 2026-09-28 en `pet.log`: Claude Code avisa `attention` 60 s
+  después de cada turno que queda sin respuesta (`done` 14:40:24, `attention`
+  14:41:24; igual en los cinco turnos de esa media hora), y esa sesión sigue en
+  `attention` hasta que le vuelves a escribir. Con varias sesiones abiertas,
+  siempre había una. Una burbuja con botones tampoco se va sola si respondes
+  desde la terminal. El mouse encima cubre lo mismo sin quedarse pegado.
 - **Un tramo corto alrededor de su lugar.** Era la recomendación; el autor
   eligió el borde.
 - **Una imagen con introducción y bucle en el mismo archivo** (`loopFrom`).

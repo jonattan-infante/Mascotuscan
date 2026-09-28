@@ -135,12 +135,12 @@ Reglas del dibujo:
 - Para bordes suaves sobre cualquier escritorio conviene PNG animado (APNG): el
   GIF solo tiene transparencia de un bit.
 
-Cuándo se detiene: mientras tienes el mouse encima, mientras hay un permiso o una
-pregunta esperando respuesta en la burbuja, mientras un agente la necesita
-(`attention`) y mientras celebra que algo terminó (`done`). No se le puede hacer
-clic a una burbuja que se va, y un gesto de celebración no se ve rodando. Si el
-estado tiene imagen propia (no solo `default`), se ve en cuanto empieza a frenar,
-sin esperar la frenada. Al reanudar sigue hacia donde iba. Si la arrastras, ese
+Cuándo se detiene: mientras tienes el mouse encima de ella o de su burbuja, y
+mientras celebra que algo terminó (`done`). No se le puede hacer clic a una
+burbuja que se va, y un gesto de celebración no se ve rodando. Un agente que
+espera respuesta (`attention`) no la detiene: la burbuja rueda con ella y se
+queda quieta en cuanto le pones el mouse encima. Si el estado tiene imagen propia
+(no solo `default`), se ve en cuanto empieza a frenar, sin esperar la frenada. Al reanudar sigue hacia donde iba. Si la arrastras, ese
 pasa a ser su lugar.
 
 Quieta, se dibuja el sprite del estado como siempre. En movimiento no flota: va

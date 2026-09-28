@@ -12,6 +12,8 @@ final class BubbleView: NSView {
     var onClick: (() -> Void)?
     /// Se dispara con el `id` de la opcion clicada (ver `Bubble.options`).
     var onOption: ((String) -> Void)?
+    var onHover: ((Bool) -> Void)?
+    private var hoverArea: NSTrackingArea?
 
     static let width: CGFloat = 272
     static let padding: CGFloat = 12
@@ -164,6 +166,19 @@ final class BubbleView: NSView {
             }
         }
     }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let a = hoverArea { removeTrackingArea(a) }
+        let a = NSTrackingArea(rect: bounds,
+                               options: [.mouseEnteredAndExited, .activeAlways],
+                               owner: self, userInfo: nil)
+        addTrackingArea(a)
+        hoverArea = a
+    }
+
+    override func mouseEntered(with event: NSEvent) { onHover?(true) }
+    override func mouseExited(with event: NSEvent) { onHover?(false) }
 
     override func mouseUp(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)

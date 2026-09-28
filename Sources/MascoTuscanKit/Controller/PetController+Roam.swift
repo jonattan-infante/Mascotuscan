@@ -22,13 +22,16 @@ extension PetController {
                         startDuration: petView.roamStartDuration())
     }
 
-    /// Quieta si la vas a tocar o si te necesita: no se le puede hacer clic a
-    /// una burbuja que se va. Quieta tambien mientras celebra que algo termino:
-    /// ese gesto no se ve rodando. Sin trabajo, a su lugar.
+    /// Quieta si la vas a tocar, con el mouse sobre ella o sobre su burbuja: no
+    /// se le puede hacer clic a una burbuja que se va. Quieta tambien mientras
+    /// celebra que algo termino: ese gesto no se ve rodando. Sin trabajo, a su
+    /// lugar.
+    ///
+    /// Que un agente espere respuesta no la detiene: Claude Code avisa
+    /// `attention` a los 60 s de cada turno sin respuesta, y la sesion sigue asi
+    /// hasta que le vuelvas a escribir. Con varias abiertas no rodaria nunca.
     func roamGoal() -> Roamer.Goal {
-        if hovering || !attentionSessions.isEmpty || currentBubble?.options.isEmpty == false {
-            return .hold
-        }
+        if hovering || bubbleHovered { return .hold }
         if petView.mood == .done { return .hold }
         return activities.isEmpty ? .home : .roam
     }

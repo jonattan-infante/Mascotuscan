@@ -334,9 +334,13 @@ byte a byte (`cmp`). Lo que sí entró al repo es genérico:
   espalda que se pintaban adelante. `floats`/`hop`: una bola no flota. El droide
   y la figura encapuchada salen idénticos byte a byte.
 - Bloque `roam` en `pet.json`: con trabajo rueda hasta el borde, vuelve en
-  espejo y al terminar regresa a su lugar. Se detiene con el mouse encima, con
-  un permiso o pregunta en la burbuja, en `attention` y en `done`. Las cuatro
-  decisiones de comportamiento son del autor (borde, espejo, volver, por pack).
+  espejo y al terminar regresa a su lugar. Se detiene con el mouse sobre ella
+  o sobre su burbuja, y en `done`. Las cuatro decisiones de comportamiento son
+  del autor (borde, espejo, volver, por pack).
+- 2026-09-28, "ya no rueda": la primera versión también se detenía en
+  `attention`. Claude Code lo avisa a los 60 s de cada turno sin respuesta y la
+  sesión se queda así hasta que le escribes (trampa 20): con varias abiertas no
+  rodaba nunca. Captura de la ventana: el "!" de `attention` sobre BB-8 quieta.
 - Cada imagen animada empieza en su primer cuadro al aparecer (`SpriteClock`):
   así `done` puede tener un gesto de una sola vez (la flamita de su BB-8).
 - `Sprite` lee con ImageIO: cada cuadro se decodifica una vez, al tamaño en que
@@ -349,6 +353,8 @@ make verify (rama del roam)     -> 189 tests Swift, 0 fallos (+ 61 Python)
   BallRendererTests 9, RoamTests 13, CelebrarAlTerminarTests 4, SpriteTests 7,
   PetPackTests +8 (roam)
 mutación: "no detenerse con el mouse" -> 4 tests en rojo
+"ya no rueda": regla vieja contra QuietaSoloSiLaVasATocarTests -> 3 en rojo;
+  con el arreglo, 4 en verde
 banco aislado, 300 dibujos a 30 fps  -> rodar 4.51 % -> 0.23 % de un núcleo
 mascota real rodando, 20 s          -> 1.44 s de CPU = 7.2 % (tiempo acumulado)
 capturas de la pantalla real        -> rueda ~77 pt/s (73 declarados), espeja
@@ -372,7 +378,9 @@ revisión, los tres por `workflow_dispatch`) y un rechazo de `implementar`.
 
 **Mascota que recorre la pantalla (F8).** Dos PR apilados, con CI en verde: #25
 (animaciones del `vector:ball`) y #26 (recorrer la pantalla + celebrar +
-`Sprite`, base #25). Mergear #25; fusionar `main` en #26 y mergearlo. Después,
+`Sprite`, base #25). #25 mergeado; `main` fusionado en #26. En #26 además: ya no
+se detiene en `attention` (trampa 20). Falta aprobar el revisor, comprobar en
+pantalla que vuelve a rodar, y mergear. Después,
 el mismo `roam` en `windows/` (PR2 de F8). El autor quiere lanzarlo: va en una
 versión después de `0.4.0`.
 
@@ -481,6 +489,12 @@ No volver a caer en estas. Todas están documentadas con evidencia en
     próxima shell (incluidas las de un agente, que cargan el perfil) arranca la
     instalada. Para probar un binario de una rama: correrlo desde una ruta que
     contenga `mascotuscan/bin/mascotuscan`, así el autoarranque no pone otra.
+20. **`attention` no quiere decir "te necesita ahora".** Claude Code manda la
+    notificación 60 s después de cada turno sin respuesta (en `pet.log`, `done`
+    y `attention` de la misma sesión a 60 s exactos), y `attentionSessions` la
+    guarda hasta que le vuelves a escribir: la barrida solo mira `activities`.
+    Con varias sesiones abiertas casi nunca está vacío. Nada que deba soltarse
+    solo puede depender de ese conjunto.
 
 ## Checklist de fin de sesión
 
