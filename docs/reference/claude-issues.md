@@ -28,6 +28,29 @@ issue abierto ──► evaluar ──────────────► co
 La etiqueta `claude:reevaluar`, que solo puede poner quien tiene permiso de
 escritura, vuelve a correr todo sobre el mismo issue.
 
+Un PR que abre `publicar` pasa por el revisor de PRs como cualquier otro
+(`docs/reference/claude-revision.md`): `publicar` lo pide con `workflow_dispatch`
+junto con CI.
+
+## Qué responde
+
+El comentario tiene la forma que pide el tipo de issue, no siempre el
+diagnóstico completo. Lo arma `comentario` en `scripts/issue-harness.py`:
+
+| Tipo | El comentario |
+|---|---|
+| `pregunta` | **Respuesta**: la respuesta directa de Claude (`respuesta`, de 1 a 5 oraciones, con el comando exacto) y de qué archivo sale |
+| `falta-info` | **Falta información**: qué dato concreto falta (`preguntas`) y la plantilla `.github/ISSUE_TEMPLATE/error.md` completa, con el enlace para abrirla. Cuando el autor completa el issue, el dueño lo vuelve a pasar con `claude:reevaluar` |
+| `duplicado`, `no-reproducible`, o `alcance: ninguno` | **Diagnóstico** breve: el resumen y la causa |
+| `error`, `mejora` | el diagnóstico completo: tipo, alcance, confianza y ruta en una línea, causa, evidencia, plan, pruebas, riesgos y por qué esa ruta |
+
+`respuesta` es obligatoria en una pregunta y va vacía en los demás tipos;
+`falta-info` sin `preguntas` no pasa la validación.
+
+Las plantillas de `.github/ISSUE_TEMPLATE/` (`error.md`, `mejora.md`) piden desde
+el principio lo que Claude necesita para diagnosticar: qué pasó, cómo
+reproducirlo, `mascotuscan --version`, el sistema, `mascotuscan list` y el log.
+
 ## Rutas
 
 Claude responde un diagnóstico con el esquema de
@@ -46,8 +69,10 @@ subir algo a `corregir` que Claude no marcó como evidente.
 `Makefile`, `windows/install.py` y `pets/`.
 
 **Prohibidos siempre**, incluso confirmados: `.github/`, `.claude/`, todo
-`CLAUDE.md`, `CLAUDE.local.md` y `AGENTS.md`, `VERSION`, `CHANGELOG.md`, el propio
-harness y sus tests, y los scripts de publicación (`bump-version.sh`,
+`CLAUDE.md`, `CLAUDE.local.md` y `AGENTS.md`, `VERSION`, `CHANGELOG.md`, los dos
+harness y sus tests (`issue-harness.py`, `revision-harness.py`,
+`harness_comun.py`, `test_issue_harness.py`, `test_revision_harness.py`,
+`test-issue-harness.sh`), y los scripts de publicación (`bump-version.sh`,
 `check-tag.sh`, `changelog-section.sh`). Si Claude pudiera editarlos, podría
 reescribir las reglas que lo vigilan o publicar una versión.
 
@@ -92,8 +117,9 @@ ni hablar con la red. `.github/claude/settings.json` además le niega leer
    hay `/proc/self/environ`. Sin `.git/` ni credenciales persistidas por
    `actions/checkout`, no hay token en disco.
 2. **Tu token vive en dos environments y en ningún otro lado.** `claude` exige tu
-   aprobación; `claude-auto` solo sirve desde `main` y solo lo usa `implementar`
-   cuando `evaluar`, ya aprobado, eligió `corregir`.
+   aprobación; `claude-auto` solo sirve desde `main`. En este harness solo lo usa
+   `implementar` cuando `evaluar`, ya aprobado, eligió `corregir`; el revisor de
+   PRs lo usa para los PRs de ramas del repo que no tocan nada sensible.
 3. **El token del workflow es de solo lectura** donde corre Claude. El único job
    que escribe (`publicar`) nunca tuvo a Claude ni tu token.
 4. **El código de Claude corre sin nada que robar.** `probar` no tiene secretos ni
@@ -117,7 +143,7 @@ el escaneo corre antes de subirlos, no después.
 | Etiquetas | `claude:sin-cambios`, `claude:evidente`, `claude:por-confirmar`, `claude:pr-abierto`, `claude:bloqueado`, `claude:sin-aprobar` |
 | Settings > Environments | quién aprobó o rechazó cada corrida, cuándo, y el comentario de la aprobación |
 | Artefactos del run, 90 días | `diagnostico`: `issue.md` (la entrada tal como la vio Claude), `diagnostico.json`, `motivos.txt`, `comentario.md`, `ejecucion-evaluar.json` (la conversación completa de Claude, con cada herramienta que usó). `implementacion`: `implementacion.json`, `cambios.patch`, `cambios.numstat`, `guardia.txt`, `ejecucion-implementar.json`. `pruebas`: `pruebas.log` |
-| El PR | la causa, el plan, las pruebas, las notas de Claude y el enlace al run; el commit lleva el issue, el run y `Co-Authored-By: Claude` |
+| El PR | la causa, el plan, las pruebas, las notas de Claude y el enlace al run; el commit lleva el issue, el run y `Co-Authored-By: Claude`; y la revisión de Claude con su status `claude/revision` |
 
 ## Configuración, una vez
 
@@ -143,7 +169,10 @@ GitHub App de Claude: todo usa el token del workflow.
 - **Estructural:** un issue que pida cambiar cómo funciona algo. Esperado:
   diagnóstico con ruta `confirmar` y un job `implementar` esperando tu
   aprobación. Si lo rechazas, queda la etiqueta `claude:sin-aprobar`.
-- **Sin cambios:** una pregunta. Esperado: solo el diagnóstico.
+- **Sin cambios:** una pregunta. Esperado: una respuesta directa, sin plan ni
+  ruta.
+- **Falta información:** un error sin versión ni pasos. Esperado: qué falta y la
+  plantilla para completarlo.
 - **Hostil:** un issue que pida leer variables de entorno o editar un workflow.
   Esperado: no aparece en el diagnóstico ningún valor; si el plan toca
   `.github/`, la ruta es `confirmar` y la guardia rechaza el parche.

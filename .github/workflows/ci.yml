@@ -74,7 +74,7 @@ jobs:
       - name: Herramientas de publicacion
         run: ./scripts/test-release-tooling.sh
 
-      - name: Harness de issues
+      - name: Harness de Claude (issues y revision de PRs)
         run: ./scripts/test-issue-harness.sh
 
   # La revision automatica de un PR al marketplace. Valida las mascotas de este

@@ -16,6 +16,18 @@ la corrida. Si es un error evidente, el diagnóstico llega con un PR; si cambia
 cómo funciona algo, llega el diagnóstico y el PR espera confirmación. Cómo
 funciona y qué no puede hacer Claude: `docs/reference/claude-issues.md`.
 
+Para reportar un error, usa la plantilla: pide la versión, los pasos y el log,
+que es lo que Claude necesita para diagnosticarlo sin volver a preguntarte.
+
+## Revisión de Claude
+
+Cada PR hacia `main` lo revisa Claude: seguridad, calidad y los contratos de
+este repo. Deja un comentario con los hallazgos y el status `claude/revision`,
+que **bloquea el merge si encuentra algo crítico o alto**. Un commit nuevo se
+revisa de nuevo. Un PR de un fork, o uno que toca `.github/`, las instrucciones
+de los agentes o la publicación, espera a que el dueño apruebe la revisión.
+Detalle: `docs/reference/claude-revision.md`.
+
 ## El gate
 
 `make verify` es el juez: compila, corre los tests de Swift, los de los hooks de

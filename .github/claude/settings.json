@@ -20,12 +20,18 @@
       "Edit(VERSION)",
       "Edit(CHANGELOG.md)",
       "Edit(scripts/issue-harness.py)",
+      "Edit(scripts/revision-harness.py)",
+      "Edit(scripts/harness_comun.py)",
+      "Edit(scripts/tests/test_revision_harness.py)",
+      "Edit(scripts/test-issue-harness.sh)",
       "Edit(scripts/tests/test_issue_harness.py)",
       "Edit(scripts/bump-version.sh)",
       "Edit(scripts/check-tag.sh)",
       "Edit(scripts/changelog-section.sh)",
       "Edit(claude-entrada/**)",
-      "Edit(claude-salida/**)"
+      "Edit(claude-salida/**)",
+      "Edit(claude-pr/**)",
+      "Edit(claude-registro/**)"
     ]
   }
 }
