@@ -164,6 +164,7 @@ que un pack está bien.
 | `Sources/MascoTuscanKit/Controller/` | orquestador: ingiere eventos normalizados, decide mood y texto |
 | `Sources/MascoTuscanKit/Controller/PetController+Actions.swift` | acciones hacia cmux: saltar de workspace, responder permiso/pregunta |
 | `Sources/MascoTuscanKit/Model/PendingRequest.swift` | un permiso/pregunta sin responder, por `requestId` |
+| `Sources/MascoTuscanKit/Model/Roam.swift` | recorrer la pantalla: hasta el borde, vuelta en espejo, a su lugar al terminar |
 | `Sources/MascoTuscanKit/Support/` | rutas, puente con el CLI de cmux, tailer de archivos, formateo |
 | `pets/` | mascotas incluidas: `astro`, `gatito`, `cangrejo` y `llama` |
 | `windows/` | port para Windows en Python: mismos packs, mismo contrato de voz y de versión |

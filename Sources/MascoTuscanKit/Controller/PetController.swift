@@ -50,6 +50,8 @@ public final class PetController: NSObject, NSApplicationDelegate {
     /// Version publicada mas nueva que la que corre, si se supo. Para el menu.
     var availableUpdate: Semver?
     var saveWorkItem: DispatchWorkItem?
+    /// Solo existe si el paquete activo declara `roam`. Ver PetController+Roam.
+    var roamer: Roamer?
 
     public override init() {
         panel = PetPanel(contentRect: CGRect(origin: .zero, size: petBox),
@@ -93,6 +95,7 @@ public final class PetController: NSObject, NSApplicationDelegate {
         PetTheme.shared.activate(pack)
         Voice.shared.activate(pack)
         petView.reloadSprites()
+        setupRoam()
         plog("mascota activa: \(pack.name) (\(pack.id)) v\(pack.version), renderer \(pack.renderer.raw)")
 
         // Sin frases generadas se usa el respaldo del pack; se piden en segundo
@@ -206,6 +209,7 @@ public final class PetController: NSObject, NSApplicationDelegate {
         // origin es la esquina de la ventana; el ancla es la del personaje dentro de ella.
         let delta = CGPoint(x: origin.x - panel.frame.minX, y: origin.y - panel.frame.minY)
         anchor = clamp(CGPoint(x: anchor.x + delta.x, y: anchor.y + delta.y))
+        roamer?.place(at: Double(anchor.x))
         layout()
         scheduleSave()
     }
@@ -232,8 +236,10 @@ public final class PetController: NSObject, NSApplicationDelegate {
             let now = CACurrentMediaTime()
             let dt = now - last
             let resting = self.petView.mood == .idle && self.currentBubble == nil
+                && (self.roamer?.phase ?? .resting) == .resting
             if resting && dt < 0.1 { return }
             last = now
+            self.stepRoam(dt)
             self.petView.tick(dt)
             // La burbuja escribe letra por letra: necesita redibujarse igual de seguido.
             if self.currentBubble != nil { self.bubbleView.needsDisplay = true }

@@ -75,6 +75,7 @@ estado es "por verificar".
 | F3 | OpenCode sobre el contrato `EventSource` (PR3 de `docs/adr/0008`) | PR1, PR2 y PR4 (wmux) entregados; PR3 en espera de poder probar el plugin contra una instalación real de OpenCode | escribir `bridges/opencode/mascotuscan-bridge.js` y los dos adapters cuando haya cómo verificarlo |
 | F5 | Renombrado a MascoTuscan (`docs/adr/0010`): pasos fuera del repo | repo renombrado a `Mascotuscan`; PR #17 mergeado con CI en verde; versión `0.4.0` preparada en su PR | mergear el PR de `0.4.0` y `make tag`; en la máquina del autor, `lucy update` y confirmar `~/.mascotuscan`, el zshrc y `mascotuscan --version` ⚠️ 2026-09-27 |
 | F4 | Responder permiso/pregunta desde la burbuja (`docs/adr/0009`): verificación real pendiente | PR1 y PR2 entregados (plomería + botones), `make verify` en verde | probar a mano contra un permiso/pregunta real (workspace descartable): clic en la burbuja, confirmar en el pane que el agente siguió con esa respuesta |
+| F6 | Recorrer la pantalla (`docs/adr/0011`): bloque `roam` por mascota | PR1 (macOS + contrato) en `feat/mascota-recorre-la-pantalla`, apilado sobre las animaciones del `vector:ball`: 189 tests Swift en verde; probado en la pantalla del autor con capturas (rueda a ~77 pt/s, espeja, la burbuja lo sigue, se detiene en `done`); CPU al rodar 7.2 % medido con tiempo acumulado. Volver a su lugar: solo por tests ⚠️ 2026-09-27 | mergear los dos PR; después PR2: el mismo `roam` en `windows/` con los casos de `RoamTests` |
 
 
 ## Riesgos

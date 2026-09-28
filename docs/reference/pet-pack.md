@@ -64,6 +64,7 @@ Nada más es necesario. Un pack mínimo válido son dos archivos: `pet.json` y
 | `renderer` | sí | `"vector:droid"` o `"sprites"`. Ver abajo |
 | `sprites` | si `renderer = "sprites"` | mapa estado → ruta relativa dentro del pack |
 | `accent` | no | color por estado. Si falta, se usa la paleta por defecto |
+| `roam` | no | cómo recorre la pantalla mientras hay trabajo. Si falta, se queda en su lugar. Ver abajo |
 
 ### Renderers
 
@@ -87,6 +88,63 @@ Con `sprites`, los formatos aceptados son `gif` (se anima solo), `png`, `webp`,
 No hace falta declarar los seis estados. El que falte cae a `default` si existe,
 y si tampoco existe, al renderer vectorial. Así un pack con una sola imagen es
 válido.
+
+Cada imagen animada empieza en su primer cuadro cuando aparece (al entrar al
+estado, o al dejar de moverse) y después se repite. Así un estado puede tener un
+gesto de una sola vez: `done` dura 3 s, y una imagen de 3 s para `done` se ve
+entera, de principio a fin.
+
+### Recorrer la pantalla (`roam`)
+
+Opcional, y cada mascota decide si lo quiere. Con `roam`, mientras hay al menos
+un agente trabajando la mascota rueda (o camina) hasta el borde de la pantalla,
+da la vuelta en espejo y sigue de borde a borde; cuando ya no hay trabajo,
+vuelve a su lugar y se queda ahí. Ver `docs/adr/0011`.
+
+```json
+"roam": {
+  "start": "sprites/arranque.png",
+  "loop": "sprites/rodando.png",
+  "speed": 73
+}
+```
+
+| Campo | Obligatorio | Qué es |
+|---|---|---|
+| `loop` | sí | se reproduce en bucle mientras avanza |
+| `start` | no | se reproduce una vez, sin moverse, antes de avanzar (por ejemplo, girar la cabeza hacia donde va). Al revés es la frenada. Sin él, arranca y frena en seco |
+| `speed` | sí | puntos por segundo, de 10 a 400 |
+
+Reglas del dibujo:
+
+- **Las dos imágenes miran a la derecha.** Hacia la izquierda el programa las
+  espeja; no hay que dibujar las dos direcciones.
+- **Mismo lienzo que los sprites de estado.** Se dibujan en la misma caja, así
+  que si miden distinto la mascota cambia de tamaño al arrancar.
+- **`start` termina en el primer cuadro de `loop`**, y empieza en la pose de
+  reposo: al frenar se reproduce al revés y tiene que quedar como estaba.
+- **Cada cuadro dura lo que declara**, en GIF, PNG animado, WebP o HEICS; menos
+  de 20 ms cuenta como 100 ms, como en los navegadores. Una pausa conviene
+  escribirla como un solo cuadro largo y no como muchos iguales: cada cuadro
+  distinto ocupa memoria. Hasta la 0.4.0, en macOS un PNG animado tomaba la
+  duración del primer cuadro para todos; si el pack tiene que verse bien ahí,
+  todos los cuadros con la misma duración.
+- **`speed` sin patinar**: si el cuerpo rueda, la velocidad es el perímetro de la
+  rueda en pantalla dividido por lo que dura una vuelta de `loop`. Con otra
+  velocidad se ve como si patinara.
+- Para bordes suaves sobre cualquier escritorio conviene PNG animado (APNG): el
+  GIF solo tiene transparencia de un bit.
+
+Cuándo se detiene: mientras tienes el mouse encima, mientras hay un permiso o una
+pregunta esperando respuesta en la burbuja, mientras un agente la necesita
+(`attention`) y mientras celebra que algo terminó (`done`). No se le puede hacer
+clic a una burbuja que se va, y un gesto de celebración no se ve rodando. Si el
+estado tiene imagen propia (no solo `default`), se ve en cuanto empieza a frenar,
+sin esperar la frenada. Al reanudar sigue hacia donde iba. Si la arrastras, ese
+pasa a ser su lugar.
+
+Quieta, se dibuja el sprite del estado como siempre. En movimiento no flota: va
+apoyada en el piso.
 
 ## Los seis estados
 
@@ -180,6 +238,8 @@ Dos reglas que cuestan errores si se olvidan:
 - Si `renderer = "sprites"`, cada ruta declarada existe dentro del pack y no se
   escapa de la carpeta (`..` prohibido).
 - Los colores de `accent` son `#RRGGBB`.
+- Si hay `roam`: es un objeto; `loop` (y `start`, si está) existe dentro del
+  paquete sin `..`; `speed` es un número entre 10 y 400.
 - `persona.md` existe y no está vacío.
 - Si hay `phrases.json`: es JSON válido, y **cada clase declarada conserva al
   menos una plantilla** después de validar marcadores. Una clase que se queda en
