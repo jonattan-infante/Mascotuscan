@@ -47,6 +47,8 @@ public struct PetPack {
     public let spritePaths: [String: URL]
     /// estado -> color de acento declarado por el pack
     public let accents: [String: NSColor]
+    /// Como se mueve por la pantalla, si lo declara. nil: se queda en su lugar.
+    public let roam: RoamSpec?
 
     public var personaURL: URL { root.appendingPathComponent("persona.md") }
     public var phrasesURL: URL { root.appendingPathComponent("phrases.json") }
@@ -139,6 +141,14 @@ public extension PetPack {
             }
         }
 
+        var roam: RoamSpec? = nil
+        if let declared = raw["roam"] {
+            switch parseRoam(declared, in: dir) {
+            case .success(let r): roam = r
+            case .failure(let e): return .failure(e)
+            }
+        }
+
         let pack = PetPack(
             root: dir,
             id: id,
@@ -150,11 +160,49 @@ public extension PetPack {
             language: str("language") ?? "es",
             renderer: renderer,
             spritePaths: sprites,
-            accents: accents
+            accents: accents,
+            roam: roam
         )
 
         guard pack.persona != nil else { return .failure(.noPersona) }
         return .success(pack)
+    }
+
+    /// El bloque `roam`. Lo escribe un tercero, asi que tiene las mismas reglas
+    /// que los sprites: rutas dentro del pack y archivos que existan.
+    static func parseRoam(_ raw: Any, in dir: URL) -> Result<RoamSpec, PackError> {
+        guard let r = raw as? [String: Any] else {
+            return .failure(.badRoam("\"roam\" tiene que ser un objeto con \"loop\" y \"speed\""))
+        }
+        func file(_ key: String) -> Result<URL?, PackError> {
+            guard let v = r[key] else { return .success(nil) }
+            guard let rel = v as? String, !rel.isEmpty else {
+                return .failure(.badRoam("\"roam.\(key)\" tiene que ser una ruta dentro del paquete"))
+            }
+            guard !rel.contains("..") else { return .failure(.escapingPath(rel)) }
+            let url = dir.appendingPathComponent(rel)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                return .failure(.badRoam("\"roam.\(key)\" apunta a \"\(rel)\", que no existe en el paquete"))
+            }
+            return .success(url)
+        }
+        let loop: URL?, start: URL?
+        switch file("loop") {
+        case .success(let u): loop = u
+        case .failure(let e): return .failure(e)
+        }
+        switch file("start") {
+        case .success(let u): start = u
+        case .failure(let e): return .failure(e)
+        }
+        guard let loopURL = loop else {
+            return .failure(.badRoam("falta \"roam.loop\": la imagen en bucle mientras avanza"))
+        }
+        let range = RoamSpec.speedRange
+        guard let speed = (r["speed"] as? NSNumber)?.doubleValue, range.contains(speed) else {
+            return .failure(.badRoam("\"roam.speed\" tiene que ser un número entre \(Int(range.lowerBound)) y \(Int(range.upperBound)) (puntos por segundo)"))
+        }
+        return .success(RoamSpec(start: start, loop: loopURL, speed: speed))
     }
 
     static func isValidID(_ s: String) -> Bool {
@@ -186,6 +234,7 @@ public enum PackError: Error, CustomStringConvertible {
     case badColor(state: String, value: String)
     case noPersona
     case emptyPhraseClass(String)
+    case badRoam(String)
 
     public var description: String {
         switch self {
@@ -215,6 +264,8 @@ public enum PackError: Error, CustomStringConvertible {
             return "falta persona.md, o está vacío: sin personalidad no hay mascota"
         case .emptyPhraseClass(let k):
             return "en phrases.json la clase \"\(k)\" se queda sin plantillas válidas al validar marcadores"
+        case .badRoam(let why):
+            return why
         }
     }
 }

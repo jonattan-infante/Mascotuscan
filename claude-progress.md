@@ -32,13 +32,13 @@ En vuelo:
 
 | PR | Qué | Estado |
 |---|---|---|
-| #26, #27 | La mascota recorre la pantalla (`roam`) | abiertos desde el 2026-09-28; heredan `macos-14` hasta actualizarse contra `main` |
+| #26, #27 | La mascota recorre la pantalla (`roam`, `docs/adr/0014`); #27 va apilado sobre #26 | actualizados contra `main` el 2026-11-16; el ADR pasó de 0013 a 0014 |
 
 ## Próximo paso
 
 1. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
    zshrc con solo el enganche nuevo y `mascotuscan --version` → `0.4.0` (F2).
-2. Actualizar #26 y #27 contra `main`, poner `claude:revisar` y revisar (F3).
+2. Revisar y mergear #26 y después #27 (F3).
 3. Bajar de 5 a 2 los jobs macOS por PR (B16): con el cupo de 5 y la falta de
    runners, cada PR esperó entre uno y tres reintentos el 2026-11-16.
 
@@ -146,6 +146,23 @@ No volver a caer en estas. Todas están documentadas con evidencia en
     #29 y #30 fue el bloqueo por defecto de `pull_request_target` (R17); el
     motivo solo aparece en la página de la corrida, no en `gh run view`. Esas
     corridas no se reintentan: se relanzan con `workflow_dispatch`.
+20. **`FileManager.homeDirectoryForCurrentUser` ignora `$HOME`.** Aislar una prueba
+    con `HOME=/otra/carpeta` no aísla nada: escribe en el `~/.mascotuscan` real.
+21. **El `%cpu` de `ps` en macOS es un promedio que decae en un minuto**, no el
+    consumo de ahora: justo después de arrancar incluye el arranque. Para medir,
+    tiempo de CPU acumulado (`ps -o time=`) al inicio y al final de un intervalo.
+22. **`NSBitmapImageRep` con PNG animado**: descomprime el cuadro en cada dibujo y
+    da a todos los cuadros la duración del primero. `Sprite` usa ImageIO.
+23. **`mascotuscan install --use` manda `SIGTERM` a la mascota en marcha**, y la
+    próxima shell (incluidas las de un agente, que cargan el perfil) arranca la
+    instalada. Para probar un binario de una rama: correrlo desde una ruta que
+    contenga `mascotuscan/bin/mascotuscan`, así el autoarranque no pone otra.
+24. **`attention` no quiere decir "te necesita ahora".** Claude Code manda la
+    notificación 60 s después de cada turno sin respuesta (en `pet.log`, `done`
+    y `attention` de la misma sesión a 60 s exactos), y `attentionSessions` la
+    guarda hasta que le vuelves a escribir: la barrida solo mira `activities`.
+    Con varias sesiones abiertas casi nunca está vacío. Nada que deba soltarse
+    solo puede depender de ese conjunto.
 
 ## Checklist de fin de sesión
 

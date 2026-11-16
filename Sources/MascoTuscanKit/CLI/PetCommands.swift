@@ -400,6 +400,10 @@ public enum PetCommands {
                     out("         esos estados caerán al droide vectorial")
                 }
             }
+            if let r = p.roam {
+                let arranque = r.start.map { "arranque \($0.lastPathComponent), " } ?? "sin arranque, "
+                out("  ok     roam: \(arranque)bucle \(r.loop.lastPathComponent), \(Int(r.speed)) pt/s")
+            }
             out("  ok     persona.md: \(p.persona?.count ?? 0) caracteres")
 
             // phrases.json es opcional, pero si esta, tiene que servir.

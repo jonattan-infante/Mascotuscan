@@ -48,6 +48,7 @@ final class PetView: NSView {
 
     private var spriteCache: [String: Sprite?] = [:]
     private var lastSpriteRect: CGRect?
+    private var spriteClock = SpriteClock()
 
     /// Se llama al cambiar de mascota y desde el menu. Tira el cache: los
     /// sprites de la mascota anterior no sirven para la nueva.
@@ -57,10 +58,7 @@ final class PetView: NSView {
         needsDisplay = true
     }
 
-    /// El sprite que declara el pack activo para ese estado. nil cuando la
-    /// mascota usa el renderer vectorial o no declaro imagen para el estado.
-    private func sprite(for mood: Mood) -> Sprite? {
-        guard let url = PetTheme.shared.spriteURL(for: mood) else { return nil }
+    private func cachedSprite(_ url: URL) -> Sprite? {
         let key = url.path
         if let cached = spriteCache[key] { return cached }
         let loaded = Sprite(url: url)
@@ -69,13 +67,56 @@ final class PetView: NSView {
         return loaded
     }
 
-    /// Dibuja el sprite del estado actual. Devuelve false si no hay ninguno y
-    /// hay que caer al droide vectorial.
+    // MARK: recorrer la pantalla
+
+    /// En que va la mascota que recorre la pantalla. Lo pone el controlador en
+    /// cada cuadro desde `Roamer`; en reposo se dibuja el estado, como siempre.
+    var roamPhase: Roamer.Phase = .resting
+    var roamAge: Double = 0
+
+    /// Lo que dura el `start` del pack activo: el controlador espera a que
+    /// termine de girar antes de mover la ventana.
+    func roamStartDuration() -> Double {
+        guard let url = PetTheme.shared.pack?.roam?.start else { return 0 }
+        return cachedSprite(url)?.total ?? 0
+    }
+
+    /// El cuadro de roam que toca, o nil si esta quieta o el pack no se mueve.
+    /// Las imagenes miran a la derecha; hacia la izquierda se espejan.
+    private func roamFrame() -> (sprite: Sprite, time: Double, loops: Bool, mirrored: Bool)? {
+        guard let pack = PetTheme.shared.pack, let spec = pack.roam else { return nil }
+        if roamPhase.yieldsToStateSprite(pack.spritePaths[mood.rawValue] != nil) { return nil }
+        switch roamPhase {
+        case .resting:
+            return nil
+        case .rolling(let d):
+            guard let s = cachedSprite(spec.loop) else { return nil }
+            return (s, roamAge, true, d < 0)
+        case .starting(let d):
+            guard let url = spec.start, let s = cachedSprite(url) else { return nil }
+            return (s, roamAge, false, d < 0)
+        case .stopping(let d):
+            // Frenar es el arranque al revés: la cabeza vuelve al frente.
+            guard let url = spec.start, let s = cachedSprite(url) else { return nil }
+            return (s, s.total - roamAge, false, d < 0)
+        }
+    }
+
+    /// Dibuja el sprite de roam o el del estado actual. Devuelve false si no hay
+    /// ninguno y hay que caer al droide vectorial.
     private func drawSprite(in box: CGRect) -> Bool {
-        guard let s = sprite(for: mood) else {
+        let frame: (sprite: Sprite, time: Double, loops: Bool, mirrored: Bool)
+        let now = CACurrentMediaTime()
+        if let r = roamFrame() {
+            _ = spriteClock.time(showing: "roam", now: now)
+            frame = r
+        } else if let url = PetTheme.shared.spriteURL(for: mood), let s = cachedSprite(url) {
+            frame = (s, spriteClock.time(showing: url.path, now: now), true, false)
+        } else {
             lastSpriteRect = nil
             return false
         }
+        let s = frame.sprite
         // Cabe en una caja algo mayor que el vector, conservando proporcion.
         var w = box.width * 1.5, h = box.height * 1.2
         let sz = s.size
@@ -85,7 +126,18 @@ final class PetView: NSView {
             h = sz.height * k
         }
         let rect = CGRect(x: box.midX - w / 2, y: box.minY, width: w, height: h)
-        s.draw(in: rect, at: phase)
+        if frame.mirrored {
+            NSGraphicsContext.saveGraphicsState()
+            let flip = NSAffineTransform()
+            flip.translateX(by: rect.midX, yBy: 0)
+            flip.scaleX(by: -1, yBy: 1)
+            flip.translateX(by: -rect.midX, yBy: 0)
+            flip.concat()
+            s.draw(in: rect, at: frame.time, loops: frame.loops)
+            NSGraphicsContext.restoreGraphicsState()
+        } else {
+            s.draw(in: rect, at: frame.time, loops: frame.loops)
+        }
         lastSpriteRect = rect
         return true
     }
@@ -107,7 +159,11 @@ final class PetView: NSView {
         // La formula vive en PetAnimation para que los renderers la compartan.
         let motion = PetAnimation(mood: mood, phase: phase, age: age, blinking: false)
         let body = renderer()
-        let dy = (sprite(for: mood) != nil || body.floats) ? motion.lift : motion.hop
+        // Apoyada en el piso mientras recorre la pantalla (flotar ahi se ve como
+        // patinar) o si su cuerpo vectorial no flota: solo sube cuando salta.
+        let usesSprite = PetTheme.shared.spriteURL(for: mood) != nil
+        let grounded = roamFrame() != nil || (!usesSprite && !body.floats)
+        let dy = grounded ? motion.hop : motion.lift
         let box = bodyRect().offsetBy(dx: motion.shake, dy: dy)
 
         // Sombra en el piso: se achica cuando sube.
