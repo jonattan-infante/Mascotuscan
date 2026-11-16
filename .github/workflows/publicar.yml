@@ -44,10 +44,11 @@ jobs:
   etiquetar:
     name: etiquetar y empujar
     needs: pendiente
-    if: needs.pendiente.outputs.version != ''
+    # Solo main, y no solo por el environment: workflow_dispatch se puede lanzar
+    # desde cualquier rama, y el environment acepta cualquier rama protegida. Si
+    # algun dia se protege otra, su codigo no corre con la llave de escritura.
+    if: github.ref == 'refs/heads/main' && needs.pendiente.outputs.version != ''
     runs-on: ubuntu-latest
-    # La llave vive en un environment que solo acepta main: ni otra rama ni un
-    # pull_request_target la pueden leer.
     environment: release
     steps:
       - name: La llave del job existe
@@ -61,8 +62,9 @@ jobs:
 
       # Con la llave de despliegue y no con el GITHUB_TOKEN: un tag empujado con
       # el token no dispara release.yml, y el ruleset de tags solo deja pasar a
-      # las llaves de despliegue y al administrador.
-      - uses: actions/checkout@v4
+      # las llaves de despliegue y al administrador. Fijado a un commit: este
+      # paso recibe la llave, y un tag de una action se puede mover.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           ssh-key: ${{ secrets.RELEASE_SSH_KEY }}

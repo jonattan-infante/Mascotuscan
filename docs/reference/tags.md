@@ -112,7 +112,11 @@ y se quita lo que no se nota desde fuera.
 
 Una llave SSH ed25519 propia del job, que empuja y firma. Vive en el environment
 `release`, que solo acepta ramas protegidas, así que ni un PR ni otra rama la leen.
-Se genera y se registra una vez, y la copia local se borra:
+El job que la usa además exige `github.ref == 'refs/heads/main'`: el
+environment dejaría pasar cualquier otra rama que se proteja, y
+`workflow_dispatch` se puede lanzar desde cualquiera. Ese mismo job fija
+`actions/checkout` a un commit, porque es el paso que recibe la llave. Se genera
+y se registra una vez, y la copia local se borra:
 
 ```bash
 repo=repos/jonattan-infante/mascotuscan
