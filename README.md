@@ -4,20 +4,16 @@
 [![release](https://img.shields.io/github/v/release/jonattan-infante/mascotuscan?label=release)](https://github.com/jonattan-infante/mascotuscan/releases)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![macOS · Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
+[![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196.svg)](https://www.conventionalcommits.org/es/v1.0.0/)
 
 Una mascota de escritorio que te cuenta qué están haciendo tus agentes de IA.
 En macOS observa [cmux](https://cmux.com); en Windows observa
 [Claude Code](https://claude.com/claude-code). **Elige la tuya, o hazla.**
 
-```
-                                    ┌──────────────────────────────────────┐
-      ___                           │ › *bip-bip* ./gradlew build terminó  │
-     /o o\                          │ en 1 min 34 s en Fineract. Todo en   │
-    | ___ |                         │ orden.█                              │
-    |[###]|  ◄───────────────────── └──────────────────────────────────────┘
-    /|   |\
-   ▄▄▀   ▀▄▄
-```
+<!-- Las imágenes salen de `make render` (./render), copiadas a docs/img. -->
+![Astro, la mascota por defecto, en sus seis estados: en reposo, trabajando, terminó, error, te necesita y aviso](docs/img/estados.png)
+
+![Burbuja de aviso: npm run test:e2e falló con código 1 en Backend](docs/img/burbuja-aviso.png)
 
 Cuando trabajas con varios agentes en paralelo pierdes el hilo: terminan en
 workspaces que no estás mirando, se quedan esperando permiso, los builds pasan sin
@@ -35,8 +31,9 @@ personalidad.
 - [Actualizar](#actualizar)
 - [Cómo funciona](#cómo-funciona)
 - [Solución de problemas](#solución-de-problemas)
+- [Estado y hoja de ruta](#estado-y-hoja-de-ruta)
 - [Contribuir](#contribuir)
-- [Estado del proyecto](#estado-del-proyecto)
+- [Seguridad](#seguridad)
 - [Licencia](#licencia)
 
 ## Características
@@ -49,6 +46,8 @@ personalidad.
 - **Avisa de comandos largos** (más de 20 s) y de cualquier comando que falle.
 - **Avisa de puertos** que empiezan y dejan de escuchar.
 - **Un click te lleva** al workspace del aviso y trae cmux al frente.
+- **Responde desde la burbuja** (macOS, experimental): sí o no a un permiso, o
+  una de las opciones de una pregunta, sin ir a la terminal.
 - **Mascotas intercambiables**: cuatro incluidas, un marketplace sin servidor, y
   un formato de paquete para hacer la tuya sin programar.
 - **Voz con personalidad**: Claude Code local escribe las frases de cada mascota
@@ -58,6 +57,10 @@ personalidad.
   interactivos y no cuenta Ctrl-C como fallo.
 - **Sin dependencias**: un binario de Swift de menos de 1 MB en macOS; solo la
   biblioteca estándar de Python en Windows.
+
+| Panel al pasar el mouse | Permiso pendiente |
+|---|---|
+| ![Panel con dos agentes trabajando, su herramienta, pasos y prompt](docs/img/panel.png) | ![Burbuja que pide permiso para un comando, con las opciones Sí y No](docs/img/burbuja-permiso.png) |
 
 ## Requisitos
 
@@ -110,6 +113,7 @@ Una vez instalada no hay nada que hacer: la mascota escucha y habla sola.
 | Acción | Qué pasa |
 |---|---|
 | Click | salta al workspace del último aviso |
+| Click en una opción de la burbuja | responde el permiso o la pregunta pendiente (macOS) |
 | Arrastrar | la mueves; recuerda la posición |
 | Mouse encima | panel con el estado de cada agente |
 | Click derecho | cambiar de mascota, silenciar, reescribir frases, actualizar, salir |
@@ -120,11 +124,14 @@ Los comandos de terminal (macOS):
 |---|---|
 | `mascotuscan list` | mascotas instaladas, con la activa marcada |
 | `mascotuscan use <id>` | cambiar de mascota, en caliente |
+| `mascotuscan info <id>` | ficha de una mascota: versión, autor, licencia, dibujo y cuántas frases tiene |
 | `mascotuscan search [texto]` | buscar en el marketplace |
-| `mascotuscan install <id\|url\|ruta> [--use]` | instalar del marketplace, de un repositorio git o de una carpeta |
+| `mascotuscan install <id\|url\|ruta> [--use] [--force]` | instalar del marketplace, de un repositorio git o de una carpeta |
+| `mascotuscan uninstall <id>` | quitar una mascota instalada |
 | `mascotuscan new <id> [--sprites]` | crear un paquete nuevo, ya válido |
 | `mascotuscan fork <origen> <nuevo>` | copia editable de una mascota existente |
 | `mascotuscan sprite <id> <estado> <archivo>` | ponerle una imagen a un estado; `--dir`, `--clear` |
+| `mascotuscan renderers` | los dibujos integrados que puede usar un paquete |
 | `mascotuscan validate <ruta>` | revisar un paquete y explicar cada fallo |
 | `mascotuscan voice [<id>]` | que Claude Code le escriba las frases |
 | `mascotuscan update [--check]` | actualizar a la última versión publicada |
@@ -211,11 +218,11 @@ mascotuscan use mi-gato
 Tres dibujos integrados que se tiñen con los colores del paquete. No pesan nada y
 son originales:
 
-| `renderer` | Qué dibuja |
-|---|---|
-| `vector:droid` | droide astromecánico: cúpula con lente, torso, tres patas |
-| `vector:ball` | droide esférico apoyado en el piso: quieto mira alrededor, trabajando rueda hacia ti |
-| `vector:sage` | figura encapuchada: túnica, ojos en la sombra, bastón |
+| `renderer` | Qué dibuja | Windows |
+|---|---|---|
+| `vector:droid` | droide astromecánico: cúpula con lente, torso, tres patas | sí |
+| `vector:ball` | droide esférico apoyado en el piso: quieto mira alrededor, trabajando rueda hacia ti | todavía no |
+| `vector:sage` | figura encapuchada: túnica, ojos en la sombra, bastón | todavía no |
 
 `mascotuscan renderers` los lista. El formato completo del paquete está en
 [`docs/reference/pet-pack.md`](docs/reference/pet-pack.md).
@@ -246,6 +253,8 @@ regla que no se negocia: **nada de arte de personajes con dueño**.
 | `narrateEverySeconds` | `150` | cada cuánto cuenta en qué van los agentes; `0` lo apaga |
 | `checkUpdates` | `true` | consultar una vez al día si hay una versión nueva |
 
+Los cambios se leen al arrancar: reinicia la mascota después de editarlo.
+
 Variables de entorno para los hooks de zsh, en `~/.zshrc` antes del `source`:
 
 ```zsh
@@ -267,19 +276,25 @@ mascotuscan update --check    # solo dice si hay una más nueva
 
 En Windows, desde `windows/`: `python install.py --update`.
 
-**Si venías de LucyGlow** (comando `lucy`): `lucy update` instala MascoTuscan y
-mueve `~/.lucy` a `~/.mascotuscan` sin perder configuración, mascotas ni frases;
-también cambia el enganche de tu `~/.zshrc`. Desde ahí el comando es
-`mascotuscan` y las variables son `MASCOTUSCAN_*`: si pusiste `~/.lucy/bin` en tu
-`PATH` o usabas alguna `LUCY_*`, cámbialas a mano. En Windows, después de
-`python install.py --update`, corre `python install.py` una vez más para
-registrar los hooks con su nombre nuevo. Por qué y qué cambió:
-[`docs/adr/0010`](docs/adr/0010-renombrar-lucyglow-a-mascotuscan.md).
-
 La comprobación es una consulta al día a GitHub, en segundo plano, y se apaga con
 `checkUpdates: false`. Las versiones siguen [SemVer](https://semver.org/lang/es/) y
-cada una tiene sus notas en [`CHANGELOG.md`](CHANGELOG.md). Cómo se publica una:
-[`docs/reference/versioning.md`](docs/reference/versioning.md).
+cada una tiene sus notas en [`CHANGELOG.md`](CHANGELOG.md).
+
+<details>
+<summary>Si venías de LucyGlow (comando <code>lucy</code>)</summary>
+
+`lucy update` instala MascoTuscan y mueve `~/.lucy` a `~/.mascotuscan` sin perder
+configuración, mascotas ni frases; también cambia el enganche de tu `~/.zshrc`.
+Desde ahí el comando es `mascotuscan` y las variables son `MASCOTUSCAN_*`: si
+pusiste `~/.lucy/bin` en tu `PATH` o usabas alguna `LUCY_*`, cámbialas a mano.
+
+En Windows, después de `python install.py --update`, corre `python install.py`
+una vez más para registrar los hooks con su nombre nuevo.
+
+Por qué y qué cambió:
+[`docs/adr/0010`](docs/adr/0010-renombrar-lucyglow-a-mascotuscan.md).
+
+</details>
 
 ## Cómo funciona
 
@@ -330,10 +345,32 @@ en pantalla en vez de quedarse muda.
 
 **Molesta.** Click derecho, "Silenciar avisos". O ajusta `config.json`.
 
-Para reportar un problema, incluye la salida de `pet.log`, la versión de macOS o
-Windows, y `mascotuscan --version`.
+**Otra cosa.** Abre un issue con la plantilla de
+[error](https://github.com/jonattan-infante/mascotuscan/issues/new?template=error.md):
+pide la salida de `pet.log`, la versión de macOS o Windows y
+`mascotuscan --version`.
+
+## Estado y hoja de ruta
+
+En desarrollo activo y en uso diario por su autor. Mientras la versión sea `0.x`,
+una versión menor puede traer cambios incompatibles; cada uno queda anotado en
+[`CHANGELOG.md`](CHANGELOG.md) bajo **Incompatible**.
+
+Lo próximo:
+
+- [ ] La mascota recorre la pantalla mientras sus agentes trabajan
+- [ ] Probar contra un permiso real la respuesta desde la burbuja
+- [ ] `vector:ball` y `vector:sage` en Windows
+- [ ] OpenCode como fuente de eventos, cuando haya cómo probarlo
+- [ ] Fórmula de Homebrew, sonido opcional, bash y fish
+
+El plan completo, con la evidencia de cada estado, los riesgos y el backlog
+priorizado, vive en [`EXECUTION-PLAN.md`](EXECUTION-PLAN.md).
 
 ## Contribuir
+
+Las contribuciones son bienvenidas: una mascota para el marketplace, un error
+reportado o un PR.
 
 ```bash
 git clone https://github.com/jonattan-infante/mascotuscan.git
@@ -343,15 +380,20 @@ make render        # revisar el dibujo a ojo
 make run           # arrancar en primer plano
 ```
 
-`main` está protegido: todo entra por PR con CI en verde. Convenciones, flujo y
-qué se espera de un cambio: [`CONTRIBUTING.md`](CONTRIBUTING.md). Si vas a trabajar
-con un agente de IA, [`CLAUDE.md`](CLAUDE.md) es el router del repositorio.
+- **Reportar un error o pedir una mejora:** con las
+  [plantillas de issue](https://github.com/jonattan-infante/mascotuscan/issues/new/choose).
+- **Proponer un cambio:** `main` está protegido y todo entra por PR con CI en
+  verde. Convenciones, flujo y qué se espera de un cambio:
+  [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **Trabajar con un agente de IA:** [`CLAUDE.md`](CLAUDE.md) es el índice del
+  repositorio para el agente.
 
-## Estado del proyecto
+Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
 
-Versión `0.2.0`, en uso diario por su autor. Lo entregado, lo que está en vuelo y
-el backlog viven en [`EXECUTION-PLAN.md`](EXECUTION-PLAN.md), con la evidencia de
-cada estado. Los cambios por versión, en [`CHANGELOG.md`](CHANGELOG.md).
+## Seguridad
+
+Si encuentras una vulnerabilidad, no abras un issue público: sigue
+[`SECURITY.md`](SECURITY.md).
 
 ## Licencia
 
