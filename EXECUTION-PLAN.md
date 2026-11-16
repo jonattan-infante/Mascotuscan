@@ -33,7 +33,7 @@ En orden de prioridad.
 
 | # | Cosa | Estado | Próximo paso concreto |
 |---|---|---|---|
-| F9 | Correcciones de la revisión de #28 | PR #30: el job con la llave exige `main`, `actions/checkout` fijado a un commit, test de firma real y el de origin/main corregido. `test-release-tooling.sh` → 30 ok; dos mutantes caen | revisar y mergear #30 |
+| F9 | Correcciones de la revisión de #28 | PR #30, abierto el 2026-11-16 (`gh pr view 30`): el job con la llave exige `main`, `actions/checkout` fijado a un commit, test de firma real y el de origin/main corregido. `test-release-tooling.sh` → 30 ok; dos mutantes caen | revisar y mergear #30 |
 | F2 | Migración de la máquina del autor a MascoTuscan (`docs/adr/0010`) | lista para hacer: `v0.4.0` es el último release desde el 2026-11-16 (`gh release list`) | `lucy update`; confirmar `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que `mascotuscan --version` responde |
 | F3 | La mascota recorre la pantalla mientras trabaja (`roam`) | PRs #26 y #27 abiertos desde el 2026-09-28; `claude/revision` en `failure` porque nadie aprobó la corrida | actualizarlos contra `main` (heredan los runners nuevos), poner `claude:revisar` y revisar |
 | F4 | Revisor de PRs como check obligatorio (`docs/adr/0012`) | en `main` desde #24; ya corrió en GitHub sobre #25 y #26 (`gh run list -w "claude revisa PRs"`). `claude/revision` no está entre los checks obligatorios | agregarlo en *Settings > Branches* y verificar los cuatro puntos de `docs/reference/claude-revision.md` §Sin verificar todavía |
@@ -106,6 +106,7 @@ decía la salida en ese momento.
 | R14 | Un PR hostil engaña a Claude para que apruebe, o un falso positivo bloquea un PR correcto | un merge sin revisión real, o un PR frenado | el status lo decide el harness; una credencial agregada bloquea aunque Claude apruebe; el código del PR nunca se ejecuta; los PRs sensibles y los forks esperan aprobación. Ante un falso positivo, `claude:revision-anulada` |
 | R15 | Se filtra la llave de publicación de CI (`RELEASE_SSH_KEY`) | alguien crea tags `v*` o empuja ramas sin protección | vive en el environment `release`, que solo acepta ramas protegidas, y con #30 el job además exige `main`; `main` le exige PR y checks como a cualquiera. Se revoca borrando la deploy key (`gh repo deploy-key delete`) |
 | R16 | GitHub retira un runner que usa CI | checks obligatorios que nunca llegan a correr: ningún PR entra, ningún release sale | pasó con `macos-14` (P0.7). Variante: la imagen existe pero no hay capacidad. El job de macOS de `v0.4.0` terminó con `The job was not acquired by Runner of type hosted even after multiple attempts`, y se reintentó. Revisar los avisos de retiro de imágenes de GitHub antes de cada release |
+| R17 | GitHub bloquea por defecto `pull_request_target` en repos públicos desde el 2026-12-02 | la revisión de Claude termina en `startup_failure` y ningún PR se revisa | pasó en el corte de prueba del 2026-11-16 (corridas 43910799064 y 43911158599). Política de Actions 14840: permite `pull_request_target` y `workflow_dispatch` solo a `claude-revision.yml` (`docs/reference/claude-revision.md` §Configuración) |
 
 ## Backlog
 

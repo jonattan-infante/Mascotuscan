@@ -358,8 +358,6 @@ una versión menor puede traer cambios incompatibles; cada uno queda anotado en
 
 Lo próximo:
 
-- [ ] Publicar cada versión desde CI al mergear su PR
-  ([`docs/adr/0013`](docs/adr/0013-ci-publica-la-version.md))
 - [ ] La mascota recorre la pantalla mientras sus agentes trabajan
 - [ ] Probar contra un permiso real la respuesta desde la burbuja
 - [ ] `vector:ball` y `vector:sage` en Windows

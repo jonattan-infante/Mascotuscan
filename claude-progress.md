@@ -57,6 +57,8 @@ keys                    -> "publicar version (CI)", read_only: false
 secret --env release    -> RELEASE_SSH_KEY (la copia local se borró con shred)
 rulesets/23606182       -> bypass DeployKey + RepositoryRole 5; reglas y condiciones intactas
 private-vulnerability-reporting -> enabled: true; descripción y topics del repo al día
+actions/policies/14840  -> "revisor de Claude": pull_request_target y workflow_dispatch
+                           solo para claude-revision.yml (R17)
 ```
 
 ## Decisiones vigentes que no están en un ADR
@@ -140,6 +142,10 @@ No volver a caer en estas. Todas están documentadas con evidencia en
     `v0.4.0`, GitHub no tuvo runners arm64 y canceló el job a los 15 minutos
     ("The job was not acquired by Runner of type hosted"). El tag estaba bien:
     `gh run rerun <id> --failed`, nunca un tag nuevo.
+19. **`startup_failure` sin jobs no es un error del YAML.** En la revisión de
+    #29 y #30 fue el bloqueo por defecto de `pull_request_target` (R17); el
+    motivo solo aparece en la página de la corrida, no en `gh run view`. Esas
+    corridas no se reintentan: se relanzan con `workflow_dispatch`.
 
 ## Checklist de fin de sesión
 
