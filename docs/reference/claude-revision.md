@@ -145,6 +145,27 @@ Después de mergear el workflow:
 2. **Settings > Branches > la regla de `main`**: en *Require status checks to
    pass*, agrega `claude/revision`. GitHub solo lo ofrece después de verlo una
    vez: abre un PR cualquiera y espera su primera revisión.
+3. **Una política de Actions que permita `pull_request_target` a este workflow,
+   y solo a este.** Desde el 2026-12-02 GitHub bloquea ese evento por defecto en
+   los repos públicos; sin la política, la revisión termina en
+   `startup_failure` y no corre. Pasó en el corte de prueba del 2026-11-16
+   (corridas 43910799064 y 43911158599). Lleva también `workflow_dispatch`: la
+   API describe `allowed_events` como "the events that can trigger Actions
+   workflows", así que se trata como lista de permitidos para el workflow que
+   apunta (⚠️ 2026-11-16: no se probó si un evento no listado queda bloqueado).
+   Aplicada el 2026-11-16 (política 14840):
+
+   ```bash
+   gh api -X POST repos/jonattan-infante/mascotuscan/actions/policies --input - <<'EOF'
+   {"name":"revisor de Claude","enforcement":"active",
+    "conditions":{"workflow_path":{"include":[".github/workflows/claude-revision.yml"],"exclude":[]}},
+    "rules":[{"type":"restrict_action_events","parameters":{"allowed_events":["pull_request_target","workflow_dispatch"]}}]}
+   EOF
+   ```
+
+   Una corrida que cayó por el bloqueo no se puede reintentar ("This workflow
+   run cannot be retried"); se relanza con
+   `gh workflow run claude-revision.yml --ref main -f pr=<n>`.
 
 ## Sin verificar todavía
 

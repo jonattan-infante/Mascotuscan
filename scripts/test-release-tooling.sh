@@ -104,4 +104,79 @@ g tag -a v0.4.0 -m "mascotuscan 0.4.0" -m "- x."
 out="$(run check-tag.sh v0.4.0 --on main --no-signature 2>&1 || true)"
 check "un commit fuera de main falla con --on main" "1" "$(grep -c 'no esta en main' <<< "$out")"
 
+# --- tag-release ---
+# Repo aparte con un remoto desnudo: el script etiqueta lo que hay en
+# origin/main, o el commit que le pasa publicar.yml despues de un merge.
+REL="$WORK/rel" BARE="$WORK/remoto.git"
+git init -q --bare "$BARE"
+git init -q -b main "$REL"
+r() { git -C "$REL" -c tag.gpgsign=false -c commit.gpgsign=false "$@"; }
+rcommit() {   # rcommit <mensaje> [version-para-VERSION]
+  [[ -n "${2:-}" ]] && printf '%s\n' "$2" > "$REL/VERSION"
+  echo "$1" >> "$REL/log.txt"
+  r add -A >/dev/null
+  r commit -q -m "$1"
+}
+rel() { (cd "$REL" && "$ROOT/scripts/tag-release.sh" --no-signature "$@"); }
+tags_en() { git -C "$1" tag -l "$2" | wc -l | tr -d ' '; }
+
+printf '# Changelog\n\n## [1.0.0] — 2026-04-04\n\n### Agregado\n\n- La de la version.\n' > "$REL/CHANGELOG.md"
+rcommit "chore(release): 1.0.0" 1.0.0
+release_commit="$(r rev-parse HEAD)"
+rcommit "feat: entra despues de subir la version"
+r remote add origin "$BARE"
+r push -q origin main
+
+check "crea el tag y lo empuja" "0" "$(rel --push --commit "$release_commit" >/dev/null 2>&1; echo $?)"
+check "con --commit etiqueta ese commit, no la punta de main" "$release_commit" \
+  "$(git -C "$BARE" rev-list -n 1 v1.0.0 2>/dev/null)"
+check "el mensaje es 'mascotuscan X.Y.Z' y la seccion del CHANGELOG" "mascotuscan 1.0.0|### Agregado|- La de la version." \
+  "$(git -C "$BARE" tag -l --format='%(contents)' v1.0.0 | sed '/^$/d' | paste -sd'|' -)"
+
+out="$(rel --push 2>&1)" && code=0 || code=$?
+check "con la version ya publicada sale 0 sin hacer nada" "0|1" "$code|$(grep -c 'ya esta publicada' <<< "$out")"
+
+printf '# Changelog\n\n## [1.1.0] — 2026-05-05\n\n- Otra.\n' > "$REL/CHANGELOG.md"
+rcommit "chore(release): 1.1.0" 1.1.0
+r push -q origin main
+rel >/dev/null 2>&1 || true
+check "sin --push el tag queda solo en local" "1|0" "$(tags_en "$REL" v1.1.0)|$(tags_en "$BARE" v1.1.0)"
+check "sin --commit etiqueta la punta de origin/main" "$(r rev-parse origin/main)" "$(r rev-list -n 1 v1.1.0 2>/dev/null)"
+r tag -d v1.1.0 >/dev/null
+
+rcommit "chore(release): 1.2.0" 1.2.0
+r push -q origin main
+out="$(rel --push 2>&1)" && code=0 || code=$?
+check "sin la seccion del CHANGELOG falla y no crea tag" "1|1|0" \
+  "$code|$(grep -c 'sin notas para 1.2.0' <<< "$out")|$(tags_en "$REL" v1.2.0)"
+
+printf '# Changelog\n\n## [0.9.0] — 2026-06-06\n\n- Vieja.\n' > "$REL/CHANGELOG.md"
+rcommit "chore(release): 0.9.0" 0.9.0
+r push -q origin main
+out="$(rel --push 2>&1)" && code=0 || code=$?
+check "si check-tag rechaza el tag, sale 1 y no queda ni en local ni en el remoto" "1|0|0" \
+  "$code|$(tags_en "$REL" v0.9.0)|$(tags_en "$BARE" v0.9.0)"
+
+# origin/main vuelve a una version ya publicada, asi que el script tiene que
+# decir "ya esta publicada": si mirara el commit local, intentaria 2.0.0.
+printf '# Changelog\n\n## [1.0.0] — 2026-04-04\n\n### Agregado\n\n- La de la version.\n' > "$REL/CHANGELOG.md"
+rcommit "revert: volver a 1.0.0" 1.0.0
+r push -q origin main
+printf '# Changelog\n\n## [2.0.0] — 2026-07-07\n\n- Local.\n' > "$REL/CHANGELOG.md"
+rcommit "chore(release): 2.0.0" 2.0.0
+out="$(rel --push 2>&1)" && code=0 || code=$?
+check "solo cuenta lo que llego a origin/main, no un commit local" "0|1|0|0" \
+  "$code|$(grep -c 'v1.0.0 ya esta publicada' <<< "$out")|$(tags_en "$REL" v2.0.0)|$(tags_en "$BARE" v2.0.0)"
+
+# Firma real, como en publicar.yml: llave SSH desechable y sin --no-signature.
+ssh-keygen -q -t ed25519 -N '' -C test -f "$WORK/firma" >/dev/null
+r config gpg.format ssh
+r config user.signingkey "$WORK/firma"
+r push -q origin main
+out="$(cd "$REL" && "$ROOT/scripts/tag-release.sh" --push 2>&1)" && code=0 || code=$?
+check "con llave firma el tag, check-tag lo acepta y se empuja" "0|1|1" \
+  "$code|$(grep -c 'ok   firmado' <<< "$out")|$(tags_en "$BARE" v2.0.0)"
+check "la firma del tag empujado es SSH" "1" \
+  "$(git -C "$BARE" cat-file tag v2.0.0 | grep -c '^-----BEGIN SSH SIGNATURE-----$')"
+
 exit $fail
