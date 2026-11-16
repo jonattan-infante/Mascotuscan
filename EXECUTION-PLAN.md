@@ -1,35 +1,58 @@
 # EXECUTION-PLAN.md
 
-Plan maestro. **Un estado solo avanza con evidencia**: un comando que se pueda
-correr, un archivo que se pueda abrir, o una salida pegada. Sin evidencia, el
-estado es "por verificar".
+Plan maestro y hoja de ruta. **Un estado solo avanza con evidencia**: un comando
+que se pueda correr, un archivo que se pueda abrir, o una salida pegada. Sin
+evidencia, el estado es "por verificar".
 
-Última revisión: **2026-09-27**
+Última revisión: **2026-11-16**
+
+Cómo leerlo: **P0** dice si se puede trabajar; **En vuelo** es lo que sigue, en
+orden de prioridad; **Entregado** no se re-trabaja; **Backlog** es lo que viene
+después, ordenado por valor sobre esfuerzo.
 
 ## P0 — Baseline
 
-| # | Cosa | Estado | Evidencia |
+| # | Cosa | Estado | Evidencia (2026-11-15) |
 |---|---|---|---|
-| P0.1 | El paquete compila | verde | `swift build` → `Build complete!` |
-| P0.2 | Tests de lógica pura | verde | `swift test` → 52 tests, 0 fallos |
-| P0.3 | Tests de hooks de zsh | verde | `./scripts/test-shell-hooks.sh` → 8 ok, salida 0 |
-| P0.3b | Tests del instalador | verde | `./scripts/test-installer.sh` → 12 ok, salida 0 |
-| P0.3c | Integridad del repo | verde | `./scripts/test-repo-integrity.sh` → 13 ok, salida 0 |
-| P0.3d | Mascotas y marketplace | verde | `./scripts/test-pet-packs.sh` → 11 ok, salida 0. Probado que detecta: pack roto, versión desincronizada e id duplicado |
-| P0.3e | Port de Windows | verde | `make test-windows` → 51 tests, 0 fallos (2026-09-17); job `port de Windows` en CI, en `windows-latest` |
-| P0.3f | La versión es una sola | verde | `./scripts/test-repo-integrity.sh` → `ok version 0.2.0 en VERSION, Paths.swift, __init__.py y CHANGELOG`; probado en negativo: con `__init__.py` en 0.1.0 dice `FALLA la version diverge` |
-| P0.8 | `main` protegido | verde | push directo → `remote rejected (protected branch hook declined)`, verificado con `enforce_admins: true` |
-| P0.7 | CI en GitHub Actions | verde | 5 jobs en verde el 2026-07-31: build en macos-14 y macos-15, shell, mascotas, vista previa |
-| P0.4 | El binario arranca y responde | verde | `./.build/debug/lucy --version` → `lucy 0.2.0`; `python3 windows/pet.py --version` → `lucy 0.2.0` |
-| P0.5 | El dibujo se puede revisar sin pantalla | verde | `make render` → 6 PNG de estado + `todos.png` + `panel.png` |
-| P0.6 | Working tree limpio | verde | repo recién creado, primer commit |
+| P0.1 | Compila y pasan los tests de Swift | verde en `macos-15` | corrida 43789379493 de `verify` sobre `main` (`b431d5c`): `Executed 157 tests, with 0 failures`, `swift build -c release` ok |
+| P0.2 | El binario arranca y responde | verde | misma corrida, paso "El binario responde": `mascotuscan 0.4.0` |
+| P0.3 | Port de Windows | verde | `make test-windows` → `Ran 61 tests ... OK`; job `port de Windows` en verde en la corrida 43789379493 |
+| P0.4 | Harness de issues y revisor de PRs | verde | `python3 -m unittest discover -s scripts/tests` → `Ran 106 tests ... OK` |
+| P0.5 | Herramientas de publicación | verde | `./scripts/test-release-tooling.sh` → 19 ok, salida 0 |
+| P0.6 | Integridad del repo y la versión es una sola | verde | `./scripts/test-repo-integrity.sh` → `ok version 0.4.0 en VERSION, Paths.swift, __init__.py y CHANGELOG`, `ok cero emojis` |
+| P0.7 | CI en GitHub Actions | **rojo en `main`**, verde en #28 | GitHub ya no acepta `macos-14`: cada job ahí termina con `The configuration 'macos-14-arm64-us-default' is not supported` (corrida 43789379493). En #28, con `macos-15`/`macos-26`, todos los jobs en verde (corrida 43789896230). Se cierra al mergear #28 (F1) |
+| P0.8 | `main` protegido | verde | `gh api .../branches/main/protection/required_status_checks` → `build y tests (macos-15)`, `build y tests (macos-26)`, `shell e instalador`, `mascotas y marketplace` (desde 2026-11-16); push directo → `remote rejected (protected branch hook declined)`, con `enforce_admins: true` |
+| P0.9 | Working tree limpio | verde | `git status --short` vacío en `main` |
+
+Hasta que entre #28, un PR basado en `main` no puede pasar los checks obligatorios:
+su `ci.yml` todavía pide `macos-14`. Al entrar #28, cada PR abierto se actualiza
+contra `main`.
+
+## En vuelo
+
+En orden de prioridad. El primero bloquea a los demás.
+
+| # | Cosa | Estado | Próximo paso concreto |
+|---|---|---|---|
+| F1 | **Publicar `0.4.0` y que CI publique cada versión** (`docs/adr/0013`) | PR #28 abierto y en verde: runners a `macos-15`/`macos-26`, `publicar.yml` y `scripts/tag-release.sh`. `VERSION` dice `0.4.0` desde el 2026-09-27 (#18), pero el último release es `v0.3.0` (`gh release list`); mientras tanto `curl ... \| bash` falla (R12). Configuración de una vez aplicada el 2026-11-16: checks obligatorios con `macos-26`, environment `release` (`protected_branches: true`), deploy key `publicar version (CI)` con escritura, secreto `RELEASE_SSH_KEY` en el environment y bypass `DeployKey` en el ruleset 23606182 | revisar y mergear #28; confirmar que `publicar.yml` crea `v0.4.0`, que el push con la deploy key dispara `release.yml` y `gh release view v0.4.0` |
+| F2 | Migración de la máquina del autor a MascoTuscan (`docs/adr/0010`) | depende de F1: `lucy update` solo migra cuando existe un release `mascotuscan` | `lucy update`; confirmar `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que `mascotuscan --version` responde |
+| F3 | La mascota recorre la pantalla mientras trabaja (`roam`) | PRs #26 y #27 abiertos desde el 2026-09-28; `claude/revision` en `failure` porque nadie aprobó la corrida | tras F1, actualizarlos contra `main` (heredan los runners nuevos), poner `claude:revisar` y revisar |
+| F4 | Revisor de PRs como check obligatorio (`docs/adr/0012`) | en `main` desde #24; ya corrió en GitHub sobre #25 y #26 (`gh run list -w "claude revisa PRs"`). `claude/revision` no está entre los checks obligatorios | agregarlo en *Settings > Branches* y verificar los cuatro puntos de `docs/reference/claude-revision.md` §Sin verificar todavía |
+| F5 | Responder permiso/pregunta desde la burbuja: prueba real (`docs/adr/0009`) | código y botones en `main` (#15, #16); probado contra el RPC, no contra un permiso real ⚠️ 2026-09-27 | en un workspace descartable, provocar un permiso, hacer clic en la burbuja y confirmar en el pane que el agente siguió con esa respuesta |
+| F6 | Harness de issues: las rutas que faltan (`docs/adr/0011`) | probado en GitHub con #20, #21 y #22 (§Verificado en GitHub de `docs/reference/claude-issues.md`) | un error evidente real que termine en PR con CI, y un rechazo de `implementar` ⚠️ 2026-09-28 |
+| F7 | Paridad de dibujos en Windows | `windows/README.md`: "`vector:ball` y `vector:sage` aún no están portados" | portar los dos al Canvas de Tk |
+| F8 | OpenCode sobre el contrato `EventSource` (PR3 de `docs/adr/0008`) | **en espera**: no hay cómo probar el plugin contra una instalación real de OpenCode | escribir `bridges/opencode/mascotuscan-bridge.js` y los dos adapters cuando haya cómo verificarlo |
 
 ## Entregado — no re-trabajar
+
+Los nombres viejos (`lucy`, `~/.lucy`) en la evidencia son a propósito: es lo que
+decía la salida en ese momento.
 
 | Cosa | Evidencia |
 |---|---|
 | Droide vectorial con 6 estados distinguibles | `make render`, revisado a ojo en `render/todos.png` |
 | Sprites propios del usuario, con GIF animado | probado sustituyendo `default.png`: el vector desaparece y escala bien |
+| Mascotas incluidas con arte propio | `cangrejo` y `llama` con `"renderer": "sprites"` en su `pet.json`, desde #4 (2026-09-16) |
 | Burbuja estilo terminal con escritura letra por letra | `render/burbuja-*.png` en dos avances de escritura |
 | Voz generada por Claude Code local, sin API key | `~/.lucy/voice.json`, 64 plantillas, log: `voz cargada: agentDone=8 …` |
 | Respaldo estático cuando no hay `voice.json` | primera narración del log usó `Droid`, antes de que terminara la generación |
@@ -44,76 +67,63 @@ estado es "por verificar".
 | Barrida de sesiones fantasma a los 10 min | `sweepStaleActivities()`, traza `barrida: N sesión(es) sin señal` |
 | Formato de pet pack con validación en la frontera | 21 tests en `PetPackTests`: rutas con `..`, colores, sprites, semver, schema |
 | Marketplace: índice JSON, `search` e `install` desde registro, git o ruta local | `registry.json` + 9 tests en `RegistryTests`, dos de ellos validan el registro publicado |
-| Dos mascotas incluidas que solo difieren en personalidad | mismo aviso: astro dice "*bzzzt* … Algo no cuadra", gatito dice "… No fui yo" |
+| Mascotas que solo difieren en personalidad | mismo aviso: astro dice "*bzzzt* … Algo no cuadra", gatito dice "… No fui yo" |
 | Voz por mascota generada desde `persona.md` | `~/.lucy/voices/gatito.json`, 64 plantillas con voz felina, sin tocar código |
-| CLI de mascotas: list, use, info, install, uninstall, new, validate, voice, search | probados a mano sobre la máquina real; salida pegada en claude-progress |
+| CLI de mascotas: list, use, info, install, uninstall, new, validate, voice, search | probados a mano sobre la máquina real; salida pegada en el historial de `claude-progress.md` |
+| Comandos `sprite` y `fork`; dibujos `vector:ball` y `vector:sage` | PRs #2 y #3 |
 | Cambio de mascota en caliente desde el menú | `switchPet` reactiva tema y voz sin reiniciar el proceso |
-| Instalador y desinstalador probados de punta a punta | `./install.sh --from-source` sobre la máquina real: 1 instancia, aviso real entregado. Desinstalación cubierta por 12 casos en sandbox |
-| Versión del producto con fuente única y guarda | `VERSION` + `scripts/bump-version.sh`; la integridad compara cuatro sitios y falla en negativo (P0.3f) |
-| Aviso de versión nueva, mismo contrato en macOS y Windows | `docs/reference/versioning.md`; 14 tests en `UpdateTests.swift` y 17 en `test_update.py` con los mismos casos; punta a punta con `LUCY_UPDATE_URL=file://…` en la máquina real: `aviso: [info] … 9.9.9` una sola vez, `update.json` con `announced` (ver claude-progress) |
-| `lucy update [--check]` y `python install.py --update` | tras publicar `v0.2.0`: `update --check` → `Estás en la última versión publicada`, salida 0. `--update` en Windows solo probado por lectura ⚠️ 2026-09-17 |
-| Primer release publicado por tag | `make tag` → `v0.2.0`; run 35236336097 de `release.yml`: `el tag dice lo mismo que el repo`, `binario de macOS`, `publicar el release` en verde; release con `lucy-0.2.0-macos-arm64.tar.gz` y `.sha256` |
-| Reglas de tags con verificación y protección | `docs/reference/tags.md`; `scripts/check-tag.sh` (19 casos en `test-release-tooling.sh`, en el gate y en CI); `release.yml` lo exige con `--on origin/main`; ruleset `tags de version` (id 23606182) sobre `refs/tags/v*`, bypass de administrador probado en `v0.2.1`/`v0.2.2` |
-| Reglas de tags obligatorias en `CLAUDE.md` para cualquier agente de IA | sección propia con cinco prohibiciones (PR #7); 174 líneas, dentro del límite de 200 |
-| `v0.2.2` publicado con release real | run de `release.yml` en verde: `el tag dice lo mismo que el repo`, `binario de macOS`, `publicar el release`; `gh release view v0.2.2` → `draft=false prerelease=false`, assets con tarball y sha256 |
-| `lucy update` de punta a punta contra un release real | máquina del autor: `0.2.0` instalado → `update --check` decía "Hay una versión nueva: 0.2.2" → `lucy update` clonó el release y quedó en `lucy 0.2.2` → `update --check` dice "Estás en la última versión publicada" |
-| Versión y notas propuestas desde los commits | `make next-version` y `make release-notes` (Conventional Commits → Keep a Changelog), probados en el mismo test |
-| Instalador de macOS clona el último release | `install.sh`: resuelve `tag_name` de `releases/latest`, cae a `main` y lo dice; `bash -n` ok. **Sin release publicado aún, la rama `main` es lo que instala** ⚠️ 2026-09-17 |
-| Contrato `EventSource` (PR1 de 4): cmux y shell detrás de un adapter, con la cobertura que faltaba | `docs/reference/event-source.md`, `docs/adr/0008`; `CmuxEventSource`/`ShellHookEventSource`/`FileTailer` nuevos; `PetController.ingest(_:)` reemplaza `handleCmuxEvent`/`handleShellEvent`. Cero cambio de comportamiento observable. 35 tests nuevos (`CmuxEventSourceTests` 15, `FileTailerTests` 3, `ShellHookEventSourceTests` 3, `PetControllerIngestTests` 14) — antes de este PR, `PetController`/`+Events`/`+Sources` no tenían ningún test. `make verify` → 119 tests Swift + 51 Python, todo verde |
-| `EventSource` en Windows (PR2 de 4): `Tailer` con parser inyectable y campo `agent` | `Tailer(path, parse=...)`, default `parse_line`; `App.__init__(sources=[...])` reemplaza `tailer=`; `state.py:Session.agent` reemplaza la constante `_agent()`. 3 tests nuevos (`test_parse_is_injectable`, dos en `test_state.py`) — sin `test_app.py`: ningún test de este runtime toca `tk.Tk()` y el `tick()` que reparte sobre `sources` no tiene lógica propia. `make test-windows` → 54 tests, 0 fallos |
-| Skeleton de `WmuxEventSource` (PR4 de 4) | `start()` llama `onUnavailable` y nunca `onEvent`; no está en `makeEventSources()`. 2 tests (`WmuxEventSourceTests`): avisa no-disponible sin emitir eventos, y no aparece en la lista por defecto. Decisión explícita: OpenCode (PR3) queda pendiente porque no hay cómo probar el plugin contra una instalación real |
-| Responder permiso/pregunta (PR1 de 2, `docs/adr/0009`): plomería sin UI | `docs/reference/agent-reply.md`; `NormalizedEvent.requestId` extraído de `_opencode_request_id` en `CmuxEventSource.translate()`; `PetController.pendingRequests` poblado en `ingest(_:)`, con barrida (`sweepExpiredRequests`); `PetController+Actions.swift`: `fetchPendingContent`/`replyPermission`/`replyQuestion`. Esquema real de `feed.permission.reply`/`feed.question.reply` verificado a mano contra el propio error de validación del RPC (sin tocar ningún permiso/pregunta real). 10 tests nuevos. `make verify` → 132 tests Swift + 54 Python, todo verde. Sin cambio visible todavía: la burbuja no muestra botones hasta PR2 |
-| Responder permiso/pregunta (PR2 de 2, `docs/adr/0009`): botones en la burbuja | `BubbleView` gana sus primeras sub-regiones clicables (`BubbleOption`, una línea por opción, mismo motor de `docs/adr/0003`); `PetController.respondToOption`/`showPendingRequest`; costura de test `fetchPendingContent` (mismo patrón que `isCmuxFrontmost`). 11 tests nuevos (`BubbleViewTests` 3, `summarizeToolInput` 3, wiring en `PetControllerIngestTests` 5). `make render` → `burbuja-pendiente-0.png`/`-1.png`, revisadas a ojo. `make verify` → 143 tests Swift + 54 Python, todo verde. ⚠️ Falta la verificación de punta a punta contra un permiso/pregunta real (ver `docs/reference/agent-reply.md`) |
-| Renombrado a MascoTuscan, comando `mascotuscan` (`docs/adr/0010`), con migración encadenada `~/.lucy` y `~/.cmux-pet` → `~/.mascotuscan` | en Linux, 2026-09-27: `make test-windows` → 61 tests (7 nuevos: `test_paths.py` y hooks con nombre anterior en `test_install.py`); `test-installer.sh` → 24 ok con `sed` de GNU en lugar del de BSD (10 nuevos: migra `~/.lucy`, quita su enganche del zshrc, un solo backup con el original) y 5 de ellos fallan si se vacía `LEGACY_NAMES`; `test-shell-hooks.sh` → 8 ok; `test-repo-integrity.sh` → ok; `test-release-tooling.sh` → 19 ok; `install.py` sobre un `HOME` falso con `.lucy` y el hook viejo registrado → migrado, hook reemplazado, el ajeno intacto. Swift en CI (run 36293399797 del PR #17, 6 checks en verde): 148 tests con los 5 de `PathsTests`, `mascotuscan 0.3.0` en release, `test-installer.sh` 24 ok con el `sed` de BSD. Mergeado como `0a6bf04` |
-
-## En vuelo
-
-| # | Cosa | Estado | Próximo paso concreto |
-|---|---|---|---|
-| F1 | Mascotas con arte propio | el renderer `sprites` funciona, pero ningún pack incluido lo usa | hacer un pack de ejemplo con sprites, aunque sean formas simples, para que se vea el camino |
-| F2 | Más renderers integrados | hay `vector:droid`, `vector:ball` y `vector:sage` | portar `ball` y `sage` al Canvas de Windows |
-| F3 | OpenCode sobre el contrato `EventSource` (PR3 de `docs/adr/0008`) | PR1, PR2 y PR4 (wmux) entregados; PR3 en espera de poder probar el plugin contra una instalación real de OpenCode | escribir `bridges/opencode/mascotuscan-bridge.js` y los dos adapters cuando haya cómo verificarlo |
-| F5 | Renombrado a MascoTuscan (`docs/adr/0010`): pasos fuera del repo | repo renombrado a `Mascotuscan`; PR #17 mergeado con CI en verde; versión `0.4.0` preparada en su PR | mergear el PR de `0.4.0` y `make tag`; en la máquina del autor, `lucy update` y confirmar `~/.mascotuscan`, el zshrc y `mascotuscan --version` ⚠️ 2026-09-27 |
-| F6 | Claude atiende issues dentro de un harness (`docs/adr/0011`, `docs/reference/claude-issues.md`) | en `main` desde #19 y probado en GitHub el 2026-09-28 con #20, #21 y #22: aprobación, las tres rutas, caso hostil sin fugas, token de solo lectura sin intentos de escritura (detalle en `docs/reference/claude-issues.md` §Verificado en GitHub). Tres mejoras de esas corridas en #23. Después: respuesta según el tipo (una pregunta recibe la respuesta directa; `falta-info`, qué falta y la plantilla de `.github/ISSUE_TEMPLATE/`), con 8 tests nuevos | probar un error evidente real para ver el PR y el CI por `workflow_dispatch`, y un rechazo de `implementar` ⚠️ 2026-09-28 |
-| F7 | Claude revisa cada PR y bloquea el merge (`docs/adr/0012`, `docs/reference/claude-revision.md`) | workflow, harness con 46 tests y prompt en su PR; simulado en local contra un PR hostil (token tras una línea `++`, `CLAUDE.md` y `.claude/` del PR, enlace simbólico a `/etc`, `VERSION` sin aprobación). Nada corrió todavía en GitHub | mergear, agregar `claude/revision` como check obligatorio de `main` y verificar con un PR real los cuatro puntos de §Sin verificar ⚠️ 2026-09-28 |
-| F4 | Responder permiso/pregunta desde la burbuja (`docs/adr/0009`): verificación real pendiente | PR1 y PR2 entregados (plomería + botones), `make verify` en verde | probar a mano contra un permiso/pregunta real (workspace descartable): clic en la burbuja, confirmar en el pane que el agente siguió con esa respuesta |
-
+| Instalador y desinstalador probados de punta a punta | `./install.sh --from-source` sobre la máquina real: 1 instancia, aviso real entregado. Desinstalación cubierta por casos en sandbox (`test-installer.sh`) |
+| Versión del producto con fuente única y guarda | `VERSION` + `scripts/bump-version.sh`; la integridad compara cuatro sitios y falla en negativo |
+| Aviso de versión nueva, mismo contrato en macOS y Windows | `docs/reference/versioning.md`; 14 tests en `UpdateTests.swift` y 17 en `test_update.py` con los mismos casos; punta a punta con `LUCY_UPDATE_URL=file://…`: un solo aviso, `update.json` con `announced` |
+| `update [--check]` en macOS contra un release real | máquina del autor: `0.2.0` → `update --check` decía "Hay una versión nueva: 0.2.2" → `update` → `0.2.2` → "Estás en la última versión publicada". `python install.py --update` en Windows solo probado por lectura ⚠️ 2026-09-17 |
+| Releases publicados por tag | `v0.2.0`, `v0.2.2` y `v0.3.0` con `release.yml` en verde y tarball + sha256 (`gh release list`). `v0.2.1` se perdió por un bug de CI con tags anotados (R11) y se documentó como no publicado |
+| Reglas de tags con verificación y protección | `docs/reference/tags.md`; `scripts/check-tag.sh` en el gate y en CI; ruleset `tags de version` (id 23606182) sobre `refs/tags/v*`, bypass del administrador probado en `v0.2.1`/`v0.2.2` |
+| Versión y notas propuestas desde los commits | `make next-version` y `make release-notes` (Conventional Commits → Keep a Changelog), en `test-release-tooling.sh` |
+| Instalador de macOS clona el último release | `install.sh`: resuelve `tag_name` de `releases/latest` y cae a `main` si no hay, diciéndolo |
+| Contrato `EventSource` en macOS y Windows (PR1, PR2 y PR4 de `docs/adr/0008`) | `docs/reference/event-source.md`; `CmuxEventSource`, `ShellHookEventSource`, `FileTailer`; `PetController.ingest(_:)` como único punto que decide. Skeleton de `WmuxEventSource` sin registrar. 35 + 3 + 2 tests nuevos |
+| Responder permiso/pregunta: plomería y botones en la burbuja (`docs/adr/0009`) | `docs/reference/agent-reply.md`; `BubbleOption`, `respondToOption`; 21 tests nuevos; `render/burbuja-pendiente-*.png` revisadas a ojo. Falta la prueba real (F5) |
+| Renombrado a MascoTuscan con migración encadenada (`docs/adr/0010`) | PR #17 (`0a6bf04`), 6 checks en verde en la corrida 36293399797; migración `~/.lucy`/`~/.cmux-pet` → `~/.mascotuscan` con tests en `test-installer.sh` y `test_install.py`. Versión `0.4.0` preparada en #18 |
+| Claude atiende issues dentro de un harness (`docs/adr/0011`) | #19, #23 y #24; probado en GitHub con #20, #21 y #22: aprobación, las tres rutas, caso hostil sin fugas |
+| Claude revisa cada PR con un status que bloquea (`docs/adr/0012`) | #24; `claude/revision` corrió en GitHub sobre #25 y #26 |
+| Droide esférico animado: quieto mira alrededor, trabajando rueda | #25, 9 tests en `BallRendererTests` |
 
 ## Riesgos
 
 | # | Riesgo | Impacto | Mitigación actual |
 |---|---|---|---|
-| R1 | Si se cierra el pane que lanzó el asistente, el proceso queda hijo de launchd; un respawn del stream sería rechazado por el socket | pierde eventos en silencio | `--reconnect` mantiene la conexión original; `noteStreamExit` avisa en pantalla si el stream muere dos veces seguidas. **Sin verificar en la práctica** ⚠️ 2026-07-31 |
-| R2 | El formato de eventos de cmux puede cambiar entre versiones | el asistente deja de reportar | `docs/reference/cmux-events.md` documenta lo verificado con fecha y versión; el fallo es visible, no silencioso |
+| R1 | Si se cierra el pane que lanzó la mascota, el proceso queda hijo de launchd; un respawn del stream sería rechazado por el socket | pierde eventos en silencio | `--reconnect` mantiene la conexión original; `noteStreamExit` avisa en pantalla si el stream muere dos veces seguidas. **Sin verificar en la práctica** ⚠️ 2026-07-31 |
+| R2 | El formato de eventos de cmux puede cambiar entre versiones | la mascota deja de reportar | `docs/reference/cmux-events.md` documenta lo verificado con fecha y versión; el fallo es visible, no silencioso |
 | R3 | La generación de voz consume cuota del usuario | molestia | una llamada cada 7 días; se puede apagar borrando `voice.json` y no regenerando |
 | R5 | Un pack del marketplace trae arte de un personaje con dueño | problema legal para el autor y para el índice | regla explícita en `docs/marketplace.md`, revisión en el PR, y se quita del índice al detectarlo. **Depende de revisión humana** ⚠️ 2026-07-31 |
 | R6 | Un pack malicioso apunta sprites fuera de su carpeta | leer archivos del usuario | `..` prohibido en rutas, cubierto por test. Un pack no ejecuta código: solo aporta texto e imágenes |
-| R7 | El registro crece y el `git clone --depth 1` por install se vuelve costoso | instalación lenta | hoy son 2 entradas; si crece, cachear o servir tarballs (B11) |
-| R8 | `release.yml` falla en un tag | no hay release y nadie recibe el aviso; el instalador sigue en la última publicada | ocurrió de verdad en `v0.2.1`: `check-tag.sh` en CI daba "tag ligero" por un artefacto de checkout de GitHub Actions (R11). Corregido y verificado en `v0.2.2` |
-| R10 | El bypass del ruleset de tags no aplica al dueño y `make tag` no puede empujar | el tag queda en local; nada publicado | verificado con `v0.2.1` y `v0.2.2`: GitHub reporta "Bypassed rule violations", el bypass del rol administrador funciona |
-| R11 | GitHub Actions entrega el ref de un tag apuntando al commit, no al objeto tag anotado | `check-tag.sh` en CI rechaza cualquier tag real como "ligero" | `git fetch --tags --force origin` tras el checkout, antes de verificar; documentado en `release.yml` y en el CHANGELOG de `0.2.2` |
-| R12 | Entre el merge del renombrado y el primer release con el nombre nuevo, `install.sh` de `main` clona el último release, que compila `lucy` y no `mascotuscan` | `curl ... \| bash` falla con "no encuentro el binario compilado" | falla visible, no silenciosa; `lucy update` no reinstala mientras no haya versión más nueva. Publicar justo después del merge (F5) |
+| R7 | El registro crece y el `git clone --depth 1` por install se vuelve costoso | instalación lenta | hoy son 2 entradas (`registry.json`); si crece, cachear o servir tarballs |
+| R8 | `release.yml` falla en un tag | no hay release y nadie recibe el aviso; el instalador sigue en la última publicada | ocurrió en `v0.2.1` (R11). Pasa también si su runner deja de existir: el `release.yml` del commit de `0.4.0` usa `macos-14` (ver R16) |
+| R9 | La burbuja de actualización en Tk (Windows) no se ha visto en una máquina Windows real | el aviso podría no mostrarse aunque la lógica esté probada | la lógica pura tiene 17 tests y `Checker` está probado con `file://`; falta `--selftest` con `MASCOTUSCAN_UPDATE_URL` en Windows ⚠️ 2026-09-17 |
+| R10 | El bypass del ruleset de tags no aplica al dueño y `make tag` no puede empujar | el tag queda en local; nada publicado | verificado con `v0.2.1` y `v0.2.2`: GitHub reporta "Bypassed rule violations" |
+| R11 | GitHub Actions entrega el ref de un tag apuntando al commit, no al objeto tag anotado | `check-tag.sh` en CI rechaza cualquier tag real como "ligero" | `git fetch --tags --force origin` tras el checkout; documentado en `release.yml` y en el CHANGELOG de `0.2.2` |
+| R12 | `install.sh` de `main` clona el último release, que compila `lucy` y no `mascotuscan` | `curl ... \| bash` falla con "no encuentro el binario compilado" | **ocurriendo desde el 2026-09-27**: `v0.3.0` es el último release y su `Package.swift` declara `name: "lucy"`. Se cierra con F1 |
 | R13 | Un issue hostil (prompt injection) engaña a Claude en el harness de issues | un diagnóstico o un parche que no corresponde | Claude no tiene comandos, red ni escritura; la guardia y el escaneo de secretos son código con tests; `evaluar` y todo cambio estructural esperan aprobación; ningún PR se mergea solo |
-| R14 | Un PR hostil engaña a Claude para que apruebe, o un falso positivo bloquea un PR correcto | un merge sin revisión real, o un PR frenado | el status lo decide el harness: un veredicto que no coincide con los hallazgos invalida la revisión, y una credencial agregada bloquea aunque Claude apruebe; el código del PR nunca se ejecuta; los PRs sensibles y los forks esperan aprobación. Ante un falso positivo, `claude:revision-anulada`, solo del dueño y por commit |
-| R9 | La burbuja de actualización en Tk (Windows) no se ha visto en una máquina Windows real | el aviso podría no mostrarse aunque la lógica esté probada | la lógica pura tiene 17 tests y `Checker` está probado con `file://`; falta `--selftest` con `LUCY_UPDATE_URL` en Windows ⚠️ 2026-09-17 |
+| R14 | Un PR hostil engaña a Claude para que apruebe, o un falso positivo bloquea un PR correcto | un merge sin revisión real, o un PR frenado | el status lo decide el harness; una credencial agregada bloquea aunque Claude apruebe; el código del PR nunca se ejecuta; los PRs sensibles y los forks esperan aprobación. Ante un falso positivo, `claude:revision-anulada` |
+| R15 | Se filtra la llave de publicación de CI (`RELEASE_SSH_KEY`) | alguien crea tags `v*` o empuja ramas sin protección | vive en el environment `release`, que solo acepta ramas protegidas; `main` le exige PR y checks como a cualquiera. Se revoca borrando la deploy key (`gh repo deploy-key delete`) |
+| R16 | GitHub retira un runner que usa CI | checks obligatorios que nunca llegan a correr: ningún PR entra, ningún release sale | pasó con `macos-14` (P0.7). Revisar los avisos de retiro de imágenes de GitHub antes de cada release |
 
 ## Backlog
 
-Ordenado por relación valor/esfuerzo, no por antojo.
+Ordenado por valor sobre esfuerzo. El valor es una estimación; lo ajusta el dueño.
 
-| # | Cosa | Por qué | Esfuerzo |
-|---|---|---|---|
-| B10 | Más renderers integrados (`vector:gato`, `vector:blob`) | hoy un pack sin arte solo puede verse como droide, aunque hable como gato | medio |
-| B11 | Página del marketplace con capturas de cada mascota | el índice JSON no deja ver cómo se ven; una galería sí | medio |
-| B1 | Sonido opcional por estado | un aviso visual en la esquina se pierde si miras otra pantalla | bajo |
-| B2 | Click derecho en el panel de estado → saltar a ese agente | el panel ya sabe el workspace de cada uno | bajo |
-| B3 | Recarga en caliente de `config.json` | hoy hay que reiniciar para cambiar `narrateEverySeconds` | bajo |
-| B5 | Soporte de otros shells (bash, fish) | hoy solo zsh; bash necesita `trap DEBUG` + `PROMPT_COMMAND` | medio |
-| B6 | Migrar a concurrencia estricta de Swift 6 | hoy el paquete fija `swiftLanguageVersions: [.v5]` | medio |
-| B7 | Avisos comentados por el modelo con los datos reales | más gracia, pero cuesta latencia; ver `docs/adr/0002` | medio |
-| B8 | Fórmula de Homebrew | `brew install` es lo que espera la gente; el release ya adjunta el tarball con su sha256 | medio |
-| B12 | Que el instalador de macOS use el tarball del release en vez de compilar | instalar sin Xcode; depende de firmar (B9) | medio |
-| B13 | Marcar el job `port de Windows` como check obligatorio en `main` | hoy son cuatro checks obligatorios; se cambia en Settings > Branches | bajo |
-| B14 | Registrar la llave SSH como signing key en GitHub | hoy los tags firmados se verían "Unverified"; `gh ssh-key add --type signing` necesita el scope `admin:ssh_signing_key` | bajo |
-| B15 | Job que publique solo (`next-version` + `release-notes` + PR + `make tag` con llave propia) | hoy las notas las reescribe una persona; ver `docs/reference/tags.md` §Automatizar | medio |
-| B9 | Empaquetar como `.app` firmada | necesario si algún día se distribuye fuera de GitHub | alto |
+| # | Cosa | Por qué | Valor (estimado) | Esfuerzo |
+|---|---|---|---|---|
+| B8 | Fórmula de Homebrew | `brew install` es lo que espera la gente en macOS; el release ya adjunta el tarball con su sha256 | alto | medio |
+| B3 | Recarga en caliente de `config.json` | hoy hay que reiniciar para cambiar `narrateEverySeconds` | medio | bajo |
+| B2 | Click derecho en el panel de estado → saltar a ese agente | el panel ya sabe el workspace de cada uno | medio | bajo |
+| B1 | Sonido opcional por estado | un aviso visual en la esquina se pierde si miras otra pantalla | medio | bajo |
+| B13 | Marcar el job `port de Windows` como check obligatorio en `main` | hoy un PR puede romper Windows y entrar igual | medio | bajo |
+| B14 | Registrar como *signing key* la llave del autor y la de CI | hoy los tags se ven "Unverified" en GitHub; siguen firmados | bajo | bajo |
+| B11 | Página del marketplace con capturas de cada mascota | el índice JSON no deja ver cómo se ven; una galería sí | medio | medio |
+| B10 | Más dibujos integrados (`vector:gato`, `vector:blob`) | hoy un pack sin arte solo puede verse como droide, esfera o figura encapuchada | medio | medio |
+| B5 | Soporte de otros shells (bash, fish) | hoy solo zsh; bash necesita `trap DEBUG` + `PROMPT_COMMAND` | medio | medio |
+| B12 | Que el instalador de macOS use el tarball del release en vez de compilar | instalar sin Xcode; depende de firmar el binario (B9) | alto | medio, bloqueado por B9 |
+| B15 | Abrir solo el PR de versión (`next-version` + `release-notes` + `bump-version`) | lo demás ya lo hace CI (`docs/adr/0013`); las notas generadas siguen siendo un borrador que alguien tiene que reescribir | bajo | medio |
+| B6 | Migrar a concurrencia estricta de Swift 6 | hoy el paquete fija `swiftLanguageVersions: [.v5]` | bajo | medio |
+| B7 | Avisos comentados por el modelo con los datos reales | más gracia, pero cuesta latencia; ver `docs/adr/0002` | bajo | medio |
+| B9 | Empaquetar como `.app` firmada | necesario para B12 y si algún día se distribuye fuera de GitHub | medio | alto |
