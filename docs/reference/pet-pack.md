@@ -94,7 +94,7 @@ estado, o al dejar de moverse) y después se repite. Así un estado puede tener 
 gesto de una sola vez: `done` dura 3 s, y una imagen de 3 s para `done` se ve
 entera, de principio a fin. Solo en macOS por ahora: en Windows las imágenes
 avanzan un cuadro por tick con un contador común y no reinician al aparecer; se
-porta junto con `roam` (`docs/adr/0013`).
+porta junto con `roam` (`docs/adr/0014`).
 
 ### Recorrer la pantalla (`roam`)
 
@@ -102,7 +102,7 @@ Opcional, solo para mascotas con imágenes (`"renderer": "sprites"`), y cada
 mascota decide si lo quiere. Con `roam`, mientras hay al menos un agente
 trabajando la mascota rueda (o camina) hasta el borde de la pantalla, da la
 vuelta en espejo y sigue de borde a borde; cuando ya no hay trabajo, vuelve a su
-lugar y se queda ahí. Ver `docs/adr/0013`.
+lugar y se queda ahí. Ver `docs/adr/0014`.
 
 ```json
 "roam": {
@@ -140,12 +140,12 @@ Reglas del dibujo:
 - Para bordes suaves sobre cualquier escritorio conviene PNG animado (APNG): el
   GIF solo tiene transparencia de un bit.
 
-Cuándo se detiene: mientras tienes el mouse encima, mientras hay un permiso o una
-pregunta esperando respuesta en la burbuja, mientras un agente la necesita
-(`attention`) y mientras celebra que algo terminó (`done`). No se le puede hacer
-clic a una burbuja que se va, y un gesto de celebración no se ve rodando. Si el
-estado tiene imagen propia (no solo `default`), se ve en cuanto empieza a frenar,
-sin esperar la frenada. Al reanudar sigue hacia donde iba. Si la arrastras, ese
+Cuándo se detiene: mientras tienes el mouse encima de ella o de su burbuja, y
+mientras celebra que algo terminó (`done`). No se le puede hacer clic a una
+burbuja que se va, y un gesto de celebración no se ve rodando. Un agente que
+espera respuesta (`attention`) no la detiene: la burbuja rueda con ella y se
+queda quieta en cuanto le pones el mouse encima. Si el estado tiene imagen propia
+(no solo `default`), se ve en cuanto empieza a frenar, sin esperar la frenada. Al reanudar sigue hacia donde iba. Si la arrastras, ese
 pasa a ser su lugar.
 
 Quieta, se dibuja el sprite del estado como siempre. En movimiento no flota: va

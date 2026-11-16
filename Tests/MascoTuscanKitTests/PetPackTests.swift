@@ -302,7 +302,7 @@ final class PetPackTests: XCTestCase {
         XCTAssertTrue(why.contains("carpeta"), why)
     }
 
-    /// `roam` es de imagenes (docs/adr/0013): un droide vectorial no sabe mirar
+    /// `roam` es de imagenes (docs/adr/0014): un droide vectorial no sabe mirar
     /// hacia donde va.
     func testRoamEnUnaMascotaVectorialFalla() throws {
         try writeRoamPack(#"{"loop": "sprites/rueda.png", "speed": 73}"#, renderer: "vector:droid")

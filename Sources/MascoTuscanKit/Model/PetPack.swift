@@ -144,7 +144,7 @@ public extension PetPack {
         var roam: RoamSpec? = nil
         if let declared = raw["roam"] {
             // Un dibujo vectorial no sabe mirar hacia donde va: rodaria con las
-            // imagenes de `roam` y en reposo volveria a ser otro. Ver docs/adr/0013.
+            // imagenes de `roam` y en reposo volveria a ser otro. Ver docs/adr/0014.
             guard renderer == .sprites else {
                 return .failure(.badRoam("\"roam\" es para mascotas con imágenes: necesita \"renderer\": \"sprites\""))
             }

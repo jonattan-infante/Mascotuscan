@@ -70,7 +70,9 @@ requiriera Swift, no habría más de una.
   cuidarla y no se muere. Reporta trabajo; el carácter es la envoltura.
 - **No es una tienda.** El marketplace es un índice gratuito. No hay pagos, ni
   cuentas, ni ranking, ni destacados.
-- **No es multiplataforma.** AppKit y el socket de cmux son de macOS.
+- **No es una sola app multiplataforma.** Son dos runtimes con el mismo contrato:
+  macOS (Swift, AppKit y el socket de cmux) y Windows (Python, tkinter y los hooks
+  de Claude Code). Lo que existe en uno solo no es del producto.
 
 ## Criterios de éxito
 

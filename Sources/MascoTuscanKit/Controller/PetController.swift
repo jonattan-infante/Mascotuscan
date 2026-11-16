@@ -11,6 +11,9 @@ public final class PetController: NSObject, NSApplicationDelegate {
     let bubbleView = BubbleView()
     let rosterView = RosterView()
     var hovering = false
+    /// El mouse esta sobre la burbuja. No es `hovering`: ese abre el panel de
+    /// estado, y pasar por la burbuja no deberia abrirlo.
+    var bubbleHovered = false
 
     let petBox = CGSize(width: 96, height: 108)
     var anchor: CGPoint = .zero
@@ -127,6 +130,7 @@ public final class PetController: NSObject, NSApplicationDelegate {
         petView.onHover = { [weak self] inside in self?.setHover(inside) }
         bubbleView.onClick = { [weak self] in self?.jumpToLastAlert() }
         bubbleView.onOption = { [weak self] id in self?.respondToOption(id) }
+        bubbleView.onHover = { [weak self] inside in self?.bubbleHovered = inside }
     }
 
     func restoreAnchor() {
