@@ -63,8 +63,9 @@ red y sin GitHub. Es lo que hace Node.js con su fecha y tipo de release.
 make pr && make merge            # al entrar a main, publicar.yml etiqueta y release.yml publica
 ```
 
-`scripts/tag-release.sh` toma el último commit de `origin/main` que tocó `VERSION`
-y compone el mensaje con la sección del CHANGELOG de ese commit, sin limpiarlo
+`scripts/tag-release.sh` toma el commit que disparó `publicar.yml` (con
+`make tag`, la punta de `origin/main`), lee su `VERSION` y compone el mensaje con
+la sección del CHANGELOG de ese commit, sin limpiarlo
 (`--cleanup=verbatim`: el modo por defecto de `git tag -F` borra los encabezados
 `###`, y así perdió los suyos `v0.3.0`). Después firma, corre `check-tag.sh` y solo
 entonces empuja. Si algo falla, borra el tag local (nunca llegó al remoto), explica

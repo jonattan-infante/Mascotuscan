@@ -129,8 +129,8 @@ roto sin poder arreglarlo. El porqué de cada una está en
   corre el mismo script. Ver `docs/adr/0013`.
 - **Nunca mover, forzar ni borrar un tag ya empujado**, así el ruleset de GitHub
   lo permita por el rol de quien opera. Si un tag salió mal, se sube la versión
-  y se etiqueta de nuevo (`scripts/bump-version.sh` + `make tag`); el tag viejo
-  se queda y se documenta como perdido.
+  por PR (`scripts/bump-version.sh`) y CI etiqueta la nueva; el tag viejo se
+  queda y se documenta como perdido.
 - **Nunca etiquetar fuera de `main` al día**, con cambios sin commit, o antes de
   que `VERSION` y su sección del `CHANGELOG.md` estén mergeados en `main`.
 - **Nunca escribir a mano el mensaje del tag.** Sale de

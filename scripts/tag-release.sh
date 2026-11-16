@@ -3,24 +3,27 @@
 # --push, lo empuja. Es el unico camino para crear un tag de version: lo corre
 # publicar.yml al mergear a main, y `make tag` como respaldo manual.
 #
-#   ./scripts/tag-release.sh [--push] [--remote origin] [--no-signature]
+#   ./scripts/tag-release.sh [--push] [--commit <ref>] [--remote origin] [--no-signature]
 #
 # --push          empuja el tag; sin esto queda solo en local
+# --commit        commit a etiquetar (por defecto la punta de <remote>/main).
+#                 publicar.yml pasa el que disparo el workflow
 # --remote        remoto del que se toma main (por defecto origin)
 # --no-signature  no firma (para los tests, que corren sin llave)
 #
-# El tag apunta al ultimo commit de <remote>/main que toco VERSION, no a la
-# punta de main: lo mergeado despues de subir la version no viaja con notas que
-# no lo mencionan. Si ese tag ya existe, no hay nada que publicar y sale 0.
+# La version es la de VERSION en ese commit. Si su tag ya existe, no hay nada
+# que publicar y sale 0.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 push=0
+target=""
 remote=origin
 sign=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --push) push=1; shift ;;
+    --commit) target="$2"; shift 2 ;;
     --remote) remote="$2"; shift 2 ;;
     --no-signature) sign=0; shift ;;
     *) echo "opcion desconocida: $1" >&2; exit 2 ;;
@@ -36,9 +39,10 @@ git fetch "$remote" --quiet --tags --force
 main="$remote/main"
 git rev-parse -q --verify "$main" >/dev/null || die "no existe $main: falta traer el remoto"
 
-commit="$(git log -1 --format=%H "$main" -- VERSION)"
-[[ -n "$commit" ]] || die "ningun commit de $main tiene VERSION"
-version="$(git show "$commit:VERSION" | tr -d '[:space:]')"
+commit="$(git rev-parse -q --verify "${target:-$main}^{commit}")" \
+  || die "no existe el commit ${target:-$main}"
+version="$(git show "$commit:VERSION" 2>/dev/null | tr -d '[:space:]')"
+[[ -n "$version" ]] || die "el commit ${commit:0:12} no tiene VERSION"
 tag="v$version"
 
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then

@@ -106,7 +106,7 @@ check "un commit fuera de main falla con --on main" "1" "$(grep -c 'no esta en m
 
 # --- tag-release ---
 # Repo aparte con un remoto desnudo: el script etiqueta lo que hay en
-# origin/main, que es lo que publicar.yml ve despues de un merge.
+# origin/main, o el commit que le pasa publicar.yml despues de un merge.
 REL="$WORK/rel" BARE="$WORK/remoto.git"
 git init -q --bare "$BARE"
 git init -q -b main "$REL"
@@ -127,8 +127,8 @@ rcommit "feat: entra despues de subir la version"
 r remote add origin "$BARE"
 r push -q origin main
 
-check "crea el tag y lo empuja" "0" "$(rel --push >/dev/null 2>&1; echo $?)"
-check "el tag apunta al commit que subio VERSION, no a la punta de main" "$release_commit" \
+check "crea el tag y lo empuja" "0" "$(rel --push --commit "$release_commit" >/dev/null 2>&1; echo $?)"
+check "con --commit etiqueta ese commit, no la punta de main" "$release_commit" \
   "$(git -C "$BARE" rev-list -n 1 v1.0.0 2>/dev/null)"
 check "el mensaje es 'mascotuscan X.Y.Z' y la seccion del CHANGELOG" "mascotuscan 1.0.0|### Agregado|- La de la version." \
   "$(git -C "$BARE" tag -l --format='%(contents)' v1.0.0 | sed '/^$/d' | paste -sd'|' -)"
@@ -141,6 +141,7 @@ rcommit "chore(release): 1.1.0" 1.1.0
 r push -q origin main
 rel >/dev/null 2>&1 || true
 check "sin --push el tag queda solo en local" "1|0" "$(tags_en "$REL" v1.1.0)|$(tags_en "$BARE" v1.1.0)"
+check "sin --commit etiqueta la punta de origin/main" "$(r rev-parse origin/main)" "$(r rev-list -n 1 v1.1.0 2>/dev/null)"
 r tag -d v1.1.0 >/dev/null
 
 rcommit "chore(release): 1.2.0" 1.2.0

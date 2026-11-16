@@ -79,5 +79,7 @@ jobs:
           git config gpg.format ssh
           git config user.signingkey "$key"
 
+      # El commit que disparo el workflow, no la punta de main: si otro merge
+      # entro mientras tanto, no viaja con notas que no lo mencionan.
       - name: Etiquetar y empujar
-        run: ./scripts/tag-release.sh --push
+        run: ./scripts/tag-release.sh --push --commit "$GITHUB_SHA"

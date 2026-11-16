@@ -22,6 +22,13 @@ $ git show v0.3.0:Package.swift | grep -m1 'name:'   -> name: "lucy",
 En esas siete semanas `install.sh` de `main` instalaba `v0.3.0`, que compila
 `lucy`, y moría buscando `mascotuscan` (riesgo R12 de `EXECUTION-PLAN.md`).
 
+Y el tag ya no podía ir sobre ese commit. GitHub dejó de aceptar el runner
+`macos-14` (anotación de cada job de la corrida 43789379493, 2026-11-15:
+`The configuration 'macos-14-arm64-us-default' is not supported`), y el
+`release.yml` de `a076385` compila en `macos-14`: un tag ahí no habría tenido
+release nunca, y los tags no se mueven. Tres de los cuatro checks obligatorios de
+`main` corrían en ese runner, así que tampoco podía entrar ningún PR.
+
 `tags.md` §Automatizar ya fijaba cómo tenía que ser el día que se montara: el job
 usa su propia llave y entra al bypass del ruleset, sin tocar las reglas.
 
@@ -39,9 +46,12 @@ sus notas (`git cat-file tag v0.3.0`), contra la regla 4 de `tags.md`.
   mensaje (con `--cleanup=verbatim`), firma, corre `check-tag.sh` y solo entonces
   empuja. Lo usan CI y `make tag`, que queda como respaldo manual. Las ocho reglas
   de `tags.md` no cambian.
-- **El tag apunta al commit que subió `VERSION`**, el último de `main` que tocó
-  ese archivo, no a la punta. Lo que se mergea después de subir la versión no
-  viaja con notas que no lo mencionan, y se publica en la versión siguiente.
+- **El tag apunta al commit que disparó el workflow** (`$GITHUB_SHA`), como
+  `make tag` apuntaba a la punta de `main`. Si otro merge entra mientras tanto,
+  no viaja con notas que no lo mencionan.
+- **Los runners pasan a `macos-15` y `macos-26`**, en `ci.yml` y en
+  `release.yml`, en el mismo PR. Así el primer tag que crea CI, el de `0.4.0`,
+  cae en un commit cuyo `release.yml` puede correr.
 - **La llave es del job.** Una SSH ed25519 generada para esto, registrada como
   deploy key con escritura y guardada como secreto `RELEASE_SSH_KEY` en el
   environment `release`, que solo acepta ramas protegidas. La misma llave empuja
@@ -65,6 +75,10 @@ sus notas (`git cat-file tag v0.3.0`), contra la regla 4 de `tags.md`.
 - **Llamar `release.yml` como workflow reutilizable desde `publicar.yml`.** Serían
   dos caminos para publicar un release. El tag empujado con la llave ya dispara
   `release.yml`.
+- **Etiquetar el último commit que tocó `VERSION`** en vez del que disparó el
+  workflow. Ata las notas al contenido con más fuerza, pero para `0.4.0` ese
+  commit es `a076385`, con `macos-14`: el release nunca saldría. Habría que
+  saltar a `0.5.0` y dejar `0.4.0` como versión perdida sin haberla intentado.
 
 ## Consecuencias
 
