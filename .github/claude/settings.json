@@ -28,6 +28,7 @@
       "Edit(scripts/bump-version.sh)",
       "Edit(scripts/check-tag.sh)",
       "Edit(scripts/changelog-section.sh)",
+      "Edit(scripts/tag-release.sh)",
       "Edit(claude-entrada/**)",
       "Edit(claude-salida/**)",
       "Edit(claude-pr/**)",

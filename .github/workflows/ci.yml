@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        os: [macos-15, macos-26]
 
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
   # porque cuando falla, falla por razones distintas al codigo Swift.
   shell:
     name: shell e instalador
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
   # entrada que apunte a un paquete roto rompe `mascotuscan install` para todos.
   packs:
     name: mascotas y marketplace
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - uses: actions/checkout@v4
@@ -120,7 +120,7 @@ jobs:
   # quedan como artefacto para revisar una mascota nueva sin instalarla.
   render:
     name: vista previa
-    runs-on: macos-14
+    runs-on: macos-15
     continue-on-error: true
 
     steps:

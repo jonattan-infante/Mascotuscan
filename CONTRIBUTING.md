@@ -127,17 +127,19 @@ notas del CHANGELOG en el mensaje, desde `main`, e inmutable.
 make next-version                # propone X.Y.Z desde los commits (Conventional Commits)
 make release-notes               # borrador de la seccion del CHANGELOG; pegar y reescribir
 ./scripts/bump-version.sh X.Y.Z  # VERSION, Swift y Python
-make pr && make merge            # la version entra a main por PR, como todo
-git checkout main && git pull
-make tag                         # tag anotado y firmado, verificado, empujado; CI crea el release
+make pr && make merge            # al entrar a main, CI crea el tag y publica el release
 ```
 
-Si el tag no coincide con `VERSION`, no trae notas, no está firmado o no viene de
-`main`, `make tag` lo borra en local sin empujar y explica qué falta. Si un tag ya
-empujado salió mal, no se borra: se sube la versión y se etiqueta de nuevo.
+Publicar es mergear: `publicar.yml` ve un `VERSION` sin tag, lo etiqueta con
+`scripts/tag-release.sh` y `release.yml` publica
+([`docs/adr/0013`](docs/adr/0013-ci-publica-la-version.md)). Si el tag no
+coincide con `VERSION`, no trae notas, no está firmado o no viene de `main`, no se
+empuja nada y el job queda en rojo explicando qué falta. Si un tag ya empujado
+salió mal, no se borra: se sube la versión y se etiqueta de nuevo.
 
-Para firmar hace falta configurar la llave una vez; está en
-[`docs/reference/tags.md`](docs/reference/tags.md#firmar-configuración-de-una-vez).
+Si CI no pudo, `make tag` corre el mismo script a mano desde `main` al día; para
+eso hace falta la firma configurada una vez
+([`docs/reference/tags.md`](docs/reference/tags.md#firmar-configuración-de-una-vez)).
 
 ## Reportar un problema
 

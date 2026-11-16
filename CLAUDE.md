@@ -36,7 +36,7 @@ make render     # dibuja cada estado de la mascota activa a PNG en ./render
 make run        # arranca en primer plano
 make install    # instala en ~/.mascotuscan, con las mascotas incluidas
 make log        # sigue ~/.mascotuscan/pet.log
-make tag        # publica la versión de VERSION: tag anotado y firmado + release por CI, solo desde main
+make tag        # respaldo manual: CI etiqueta y publica solo al mergear un VERSION nuevo
 make next-version   # propone X.Y.Z desde los commits (Conventional Commits)
 make release-notes  # borrador de la sección del CHANGELOG
 ```
@@ -123,20 +123,23 @@ de estilo: son lo único que impide que un agente deje el historial de versiones
 roto sin poder arreglarlo. El porqué de cada una está en
 [`docs/reference/tags.md`](docs/reference/tags.md); esto es el qué.
 
-- **Nunca `git tag` a mano.** Siempre `make tag`. Compone el mensaje, firma con
-  SSH, corre `scripts/check-tag.sh` y solo entonces empuja.
+- **Nunca `git tag` a mano.** Publicar es mergear el PR que sube `VERSION`:
+  `publicar.yml` corre `scripts/tag-release.sh`, que compone el mensaje, firma,
+  corre `scripts/check-tag.sh` y solo entonces empuja. Si CI no pudo, `make tag`
+  corre el mismo script. Ver `docs/adr/0013`.
 - **Nunca mover, forzar ni borrar un tag ya empujado**, así el ruleset de GitHub
   lo permita por el rol de quien opera. Si un tag salió mal, se sube la versión
-  y se etiqueta de nuevo (`scripts/bump-version.sh` + `make tag`); el tag viejo
-  se queda y se documenta como perdido.
+  por PR (`scripts/bump-version.sh`) y CI etiqueta la nueva; el tag viejo se
+  queda y se documenta como perdido.
 - **Nunca etiquetar fuera de `main` al día**, con cambios sin commit, o antes de
   que `VERSION` y su sección del `CHANGELOG.md` estén mergeados en `main`.
 - **Nunca escribir a mano el mensaje del tag.** Sale de
   `scripts/changelog-section.sh`. Si no hay notas para la versión, se escriben
   en el CHANGELOG antes de etiquetar; no se inventan en el mensaje del tag.
-- **Si `scripts/check-tag.sh` falla, el tag queda solo en local, sin empujar.**
-  Se corrige la causa que reporta y se repite `make tag`. Nunca `--force`, ni
-  editar el script o el ruleset para pasarlo por alto.
+- **Si `scripts/check-tag.sh` falla, no se empuja nada.** Se corrige por PR la
+  causa que reporta y se reintenta (`workflow_dispatch` de `publicar.yml` o
+  `make tag`). Nunca `--force`, ni editar el script o el ruleset para pasarlo por
+  alto.
 
 ## Verificar en vez de recordar
 
