@@ -73,7 +73,7 @@ subir algo a `corregir` que Claude no marcó como evidente.
 harness y sus tests (`issue-harness.py`, `revision-harness.py`,
 `harness_comun.py`, `test_issue_harness.py`, `test_revision_harness.py`,
 `test-issue-harness.sh`), y los scripts de publicación (`bump-version.sh`,
-`check-tag.sh`, `changelog-section.sh`). Si Claude pudiera editarlos, podría
+`check-tag.sh`, `changelog-section.sh`, `tag-release.sh`). Si Claude pudiera editarlos, podría
 reescribir las reglas que lo vigilan o publicar una versión.
 
 ## Guardia

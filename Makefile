@@ -80,8 +80,9 @@ merge: ## Deja la rama actual en auto-merge (entra sola cuando CI pase)
 	@$(GH) pr merge --auto --squash "$$(git branch --show-current)"
 
 # Publicar es un tag, y el tag tiene reglas (docs/reference/tags.md): anotado,
-# firmado, con las notas del CHANGELOG en el mensaje, desde main al dia. Se
-# verifica todo ANTES de empujar; un tag empujado ya no se mueve.
+# firmado, con las notas del CHANGELOG en el mensaje, desde main. Lo crea CI al
+# mergear la version (publicar.yml); `make tag` corre el mismo script a mano por
+# si CI no pudo. Un tag empujado ya no se mueve.
 GH_WEB := https://github.com/jonattan-infante/mascotuscan
 
 next-version: ## Propone la proxima version a partir de los commits desde el ultimo tag
@@ -90,18 +91,14 @@ next-version: ## Propone la proxima version a partir de los commits desde el ult
 release-notes: ## Borrador de la seccion del CHANGELOG para la proxima version
 	@./scripts/release-notes.sh
 
-tag: ## Publica la version de VERSION: tag anotado y firmado desde main al dia; CI crea el release
+# Desde main al dia y limpio: los scripts que verifican el tag tienen que ser los
+# de main, no una copia editada en el working tree.
+tag: ## Respaldo manual de publicar.yml: etiqueta y empuja la version de VERSION
 	@test "$$(git branch --show-current)" = main || { echo "solo desde main"; exit 1; }
-	@git fetch origin --quiet --tags
+	@git fetch origin --quiet --tags --force
 	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || { echo "main no esta al dia con origin/main"; exit 1; }
 	@test -z "$$(git status --porcelain)" || { echo "hay cambios sin commit"; exit 1; }
-	@v="$$(tr -d '[:space:]' < VERSION)"; \
-	  git rev-parse -q --verify "refs/tags/v$$v" >/dev/null && { echo "v$$v ya existe: los tags no se mueven; sube la version"; exit 1; }; \
-	  { echo "mascotuscan $$v"; echo; ./scripts/changelog-section.sh "$$v"; } > .git/TAG_MSG || exit 1; \
-	  git tag -s "v$$v" -F .git/TAG_MSG || { echo "no pude firmar: configura la firma, ver docs/reference/tags.md"; exit 1; }; \
-	  ./scripts/check-tag.sh "v$$v" --on origin/main || { git tag -d "v$$v" >/dev/null; echo "tag borrado en local; no se empujo nada"; exit 1; }; \
-	  git push origin "v$$v" && \
-	  echo "v$$v empujado; el release lo crea CI: $(GH_WEB)/actions"
+	@./scripts/tag-release.sh --push && echo "sigue el release en $(GH_WEB)/actions"
 
 clean: ## Borra artefactos de build
 	rm -rf .build render

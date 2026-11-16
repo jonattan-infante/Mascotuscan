@@ -3,7 +3,7 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado semántico.
 
-## [0.4.0] — 2026-09-27
+## [0.4.0] — 2026-11-15
 
 El producto se llamaba LucyGlow. Ver `docs/adr/0010`.
 
@@ -32,6 +32,8 @@ El producto se llamaba LucyGlow. Ver `docs/adr/0010`.
   de la pregunta), que se le pide a cmux por el id de la solicitud. Ver
   `docs/adr/0009`. Probado contra el RPC de cmux, sin un permiso real todavía
   ⚠️ 2026-09-27.
+- El droide esférico (`vector:ball`) se mueve como una esfera: quieto mira a un
+  lado y al otro, y con trabajo en curso rueda hacia ti con la cabeza arriba.
 
 ### Cambiado
 
