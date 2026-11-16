@@ -63,6 +63,7 @@ SIEMPRE_PROHIBIDOS = (
     "scripts/bump-version.sh",
     "scripts/check-tag.sh",
     "scripts/changelog-section.sh",
+    "scripts/tag-release.sh",
 )
 INSTRUCCIONES_DE_AGENTES = ("CLAUDE.md", "CLAUDE.local.md", "AGENTS.md")
 

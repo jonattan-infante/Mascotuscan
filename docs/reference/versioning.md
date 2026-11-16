@@ -41,8 +41,10 @@ Una versión existe cuando hay un GitHub Release con su tag. Lo crea
 Si algo falla, no hay release y nadie recibe el aviso. Un tag sin release es un tag
 que no cuenta.
 
-El paso humano es `make tag`, desde `main` al día con `origin/main`, después de que la
-PR que subió `VERSION` se mergeó. Cómo tiene que ser el tag (anotado, firmado, con
+El paso humano es mergear la PR que sube `VERSION`, con su sección del CHANGELOG. Al
+entrar a `main`, `.github/workflows/publicar.yml` crea el tag con
+`scripts/tag-release.sh` y `release.yml` publica (`docs/adr/0013`). `make tag` corre
+el mismo script a mano, desde `main` al día, si CI no pudo. Cómo tiene que ser el tag (anotado, firmado, con
 las notas en el mensaje, inmutable) y cómo se propone la versión y se redactan las
 notas está en [`tags.md`](tags.md); `scripts/check-tag.sh` lo verifica y
 `release.yml` lo exige.

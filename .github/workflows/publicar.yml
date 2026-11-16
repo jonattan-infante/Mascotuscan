@@ -1,0 +1,83 @@
+name: publicar version
+
+# Publicar es mergear. Cuando entra a main un VERSION que todavia no tiene tag,
+# este workflow lo etiqueta con las mismas reglas que `make tag`
+# (scripts/tag-release.sh) y lo empuja; release.yml publica el release al ver
+# el tag. Ver docs/adr/0013 y docs/reference/tags.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Dos merges seguidos no compiten por el mismo tag.
+concurrency:
+  group: publicar-version
+  cancel-in-progress: false
+
+jobs:
+  pendiente:
+    name: hay version sin publicar
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Comparar VERSION con los tags
+        id: v
+        run: |
+          git fetch --tags --force origin
+          v="$(tr -d '[:space:]' < VERSION)"
+          if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+            echo "v$v ya esta publicada: nada que hacer"
+          else
+            echo "v$v no tiene tag: se publica"
+            echo "version=$v" >> "$GITHUB_OUTPUT"
+          fi
+
+  etiquetar:
+    name: etiquetar y empujar
+    needs: pendiente
+    if: needs.pendiente.outputs.version != ''
+    runs-on: ubuntu-latest
+    # La llave vive en un environment que solo acepta main: ni otra rama ni un
+    # pull_request_target la pueden leer.
+    environment: release
+    steps:
+      - name: La llave del job existe
+        env:
+          KEY: ${{ secrets.RELEASE_SSH_KEY }}
+        run: |
+          [[ -n "$KEY" ]] || {
+            echo "falta el secreto RELEASE_SSH_KEY en el environment release; ver docs/reference/tags.md" >&2
+            exit 1
+          }
+
+      # Con la llave de despliegue y no con el GITHUB_TOKEN: un tag empujado con
+      # el token no dispara release.yml, y el ruleset de tags solo deja pasar a
+      # las llaves de despliegue y al administrador.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.RELEASE_SSH_KEY }}
+
+      - name: Firmar con la misma llave
+        env:
+          KEY: ${{ secrets.RELEASE_SSH_KEY }}
+        run: |
+          key="$RUNNER_TEMP/firma"
+          printf '%s\n' "$KEY" > "$key"
+          chmod 600 "$key"
+          git config user.name "mascotuscan-release"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config gpg.format ssh
+          git config user.signingkey "$key"
+
+      - name: Etiquetar y empujar
+        run: ./scripts/tag-release.sh --push
