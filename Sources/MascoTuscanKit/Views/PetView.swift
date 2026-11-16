@@ -49,22 +49,34 @@ final class PetView: NSView {
     private var spriteCache: [String: Sprite?] = [:]
     private var lastSpriteRect: CGRect?
     private var spriteClock = SpriteClock()
+    /// La imagen que se dibujo por ultima vez: al cambiar, suelta sus cuadros.
+    private var visibleSprite: Sprite?
 
     /// Se llama al cambiar de mascota y desde el menu. Tira el cache: los
     /// sprites de la mascota anterior no sirven para la nueva.
     func reloadSprites() {
         spriteCache.removeAll()
         lastSpriteRect = nil
+        visibleSprite = nil
+        spriteClock.reset()
         needsDisplay = true
     }
 
+    /// Un sprite que no se pudo cargar, o que tuvo un cuadro que no se pudo
+    /// decodificar, cuenta como ausente: se dibuja el vectorial.
     private func cachedSprite(_ url: URL) -> Sprite? {
         let key = url.path
-        if let cached = spriteCache[key] { return cached }
+        if let cached = spriteCache[key] { return cached.flatMap { s -> Sprite? in s.broken ? nil : s } }
         let loaded = Sprite(url: url)
         if loaded == nil { plog("no pude cargar el sprite \(url.lastPathComponent)") }
         spriteCache[key] = loaded
         return loaded
+    }
+
+    /// Si la imagen se puede abrir. El controlador lo pregunta antes de dejar
+    /// que la mascota recorra la pantalla con ella.
+    func loadsSprite(_ url: URL) -> Bool {
+        cachedSprite(url) != nil
     }
 
     // MARK: recorrer la pantalla
@@ -113,10 +125,14 @@ final class PetView: NSView {
         } else if let url = PetTheme.shared.spriteURL(for: mood), let s = cachedSprite(url) {
             frame = (s, spriteClock.time(showing: url.path, now: now), true, false)
         } else {
-            lastSpriteRect = nil
+            showNoSprite()
             return false
         }
         let s = frame.sprite
+        if visibleSprite !== s {
+            visibleSprite?.releaseFrames()
+            visibleSprite = s
+        }
         // Cabe en una caja algo mayor que el vector, conservando proporcion.
         var w = box.width * 1.5, h = box.height * 1.2
         let sz = s.size
@@ -126,6 +142,7 @@ final class PetView: NSView {
             h = sz.height * k
         }
         let rect = CGRect(x: box.midX - w / 2, y: box.minY, width: w, height: h)
+        let drawn: Bool
         if frame.mirrored {
             NSGraphicsContext.saveGraphicsState()
             let flip = NSAffineTransform()
@@ -133,13 +150,25 @@ final class PetView: NSView {
             flip.scaleX(by: -1, yBy: 1)
             flip.translateX(by: -rect.midX, yBy: 0)
             flip.concat()
-            s.draw(in: rect, at: frame.time, loops: frame.loops)
+            drawn = s.draw(in: rect, at: frame.time, loops: frame.loops)
             NSGraphicsContext.restoreGraphicsState()
         } else {
-            s.draw(in: rect, at: frame.time, loops: frame.loops)
+            drawn = s.draw(in: rect, at: frame.time, loops: frame.loops)
+        }
+        guard drawn else {
+            showNoSprite()
+            return false
         }
         lastSpriteRect = rect
         return true
+    }
+
+    /// Se dibuja el vectorial: ninguna imagen esta a la vista.
+    private func showNoSprite() {
+        lastSpriteRect = nil
+        spriteClock.reset()
+        visibleSprite?.releaseFrames()
+        visibleSprite = nil
     }
 
     /// Caja del droide. El resto de la vista es aire para el salto y los adornos.

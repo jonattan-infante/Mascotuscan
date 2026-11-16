@@ -9,11 +9,27 @@ extension PetController {
     /// la nueva hereda ese lugar; si la nueva no se mueve, vuelve ahi de una.
     func setupRoam() {
         let home = roamer.map { CGFloat($0.home) } ?? anchor.x
-        guard let spec = PetTheme.shared.pack?.roam else {
+        let spec = PetTheme.shared.pack?.roam
+        let loopLoads = spec.map { petView.loadsSprite($0.loop) } ?? false
+        if let spec = spec, !loopLoads {
+            // Sin la imagen en bucle se veria deslizandose por la pantalla: mejor
+            // quieta, y dicho donde se ve.
+            let file = spec.loop.lastPathComponent
+            plog("roam: no pude abrir \(file); la mascota no se mueve")
+            // Despues del saludo del arranque, que la taparia enseguida.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                self?.show(Bubble(mood: .error,
+                                  text: "No pude abrir \(file), la imagen para recorrer la pantalla. Me quedo en mi lugar.",
+                                  workspaceId: nil, sticky: false))
+            }
+        }
+        guard let spec = spec, loopLoads else {
             roamer = nil
             petView.roamPhase = .resting
-            if anchor.x != home {
-                anchor.x = home
+            // Su lugar puede haber quedado en otra pantalla que ya no esta.
+            let place = clamp(CGPoint(x: home, y: anchor.y))
+            if place != anchor {
+                anchor = place
                 layout()
             }
             return

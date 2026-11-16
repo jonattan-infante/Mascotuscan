@@ -213,8 +213,7 @@ extension PetController {
         config.y = nil
         config.save()
         restoreAnchor()
-        layout()
-        scheduleSave()
+        settle()
     }
 
     @objc func quitApp() {
