@@ -1,6 +1,6 @@
 // Recorrer la pantalla: el controlador decide a donde quiere ir la mascota y
 // mueve la ventana; como se mueve lo decide `Roamer` (Model/Roam.swift). Ver
-// docs/adr/0013.
+// docs/adr/0014.
 
 import AppKit
 

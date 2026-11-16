@@ -320,7 +320,7 @@ repo tenga forma de credencial.
 Lo que falta verificar en GitHub está en `docs/reference/claude-revision.md`
 §Sin verificar todavía.
 
-## Animaciones, recorrer la pantalla y celebrar al terminar (`docs/adr/0013`)
+## Animaciones, recorrer la pantalla y celebrar al terminar (`docs/adr/0014`)
 
 Pedido del autor, 2026-09-27: mejorar las animaciones de sus mascotas `astro` y
 `bb8`. `bb8` no está en el repo: es un pack local suyo (`"license": "personal"`)
@@ -428,7 +428,7 @@ Windows real (R9), y marcar el job `port de Windows` como check obligatorio (B13
 | 2026-09-17 | Reglas de tags obligatorias en `CLAUDE.md` para cualquier agente de IA (PR #7). Primer tag bajo las reglas (`v0.2.1`) reveló un bug real de CI con tags anotados; corregido y publicado como `v0.2.2` (PR #9), con el ciclo de `lucy update` probado de punta a punta contra el release real |
 | 2026-09-27 | Renombrado de LucyGlow a MascoTuscan, comando `mascotuscan` (`docs/adr/0010`). Migración encadenada `~/.lucy`/`~/.cmux-pet`, y reemplazo de los enganches viejos en el zshrc y en los hooks de Claude Code |
 | 2026-09-27 | Harness de issues: Claude evalúa con aprobación, un error evidente termina en PR, uno estructural en diagnóstico con confirmación; reglas fijas y escaneo de secretos en `scripts/issue-harness.py` (`docs/adr/0011`). Sin correr aún en GitHub |
-| 2026-09-27 | Animaciones del `vector:ball`, `roam` (recorrer la pantalla, `docs/adr/0013`), celebrar al terminar y `Sprite` por ImageIO (de 4.51 % a 0.23 % de CPU al dibujar) |
+| 2026-09-27 | Animaciones del `vector:ball`, `roam` (recorrer la pantalla, `docs/adr/0014`), celebrar al terminar y `Sprite` por ImageIO (de 4.51 % a 0.23 % de CPU al dibujar) |
 | 2026-09-28 | Harness de issues probado en GitHub con #20, #21 y #22 (#23 con lo que salió de ahí). Respuesta según el tipo de issue y plantillas. Revisor de PRs bloqueante con status `claude/revision` (`docs/adr/0012`), sin correr aún en GitHub |
 
 ## Trampas que ya costaron tiempo
