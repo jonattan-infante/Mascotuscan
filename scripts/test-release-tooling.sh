@@ -157,9 +157,26 @@ out="$(rel --push 2>&1)" && code=0 || code=$?
 check "si check-tag rechaza el tag, sale 1 y no queda ni en local ni en el remoto" "1|0|0" \
   "$code|$(tags_en "$REL" v0.9.0)|$(tags_en "$BARE" v0.9.0)"
 
+# origin/main vuelve a una version ya publicada, asi que el script tiene que
+# decir "ya esta publicada": si mirara el commit local, intentaria 2.0.0.
+printf '# Changelog\n\n## [1.0.0] — 2026-04-04\n\n### Agregado\n\n- La de la version.\n' > "$REL/CHANGELOG.md"
+rcommit "revert: volver a 1.0.0" 1.0.0
+r push -q origin main
 printf '# Changelog\n\n## [2.0.0] — 2026-07-07\n\n- Local.\n' > "$REL/CHANGELOG.md"
 rcommit "chore(release): 2.0.0" 2.0.0
 out="$(rel --push 2>&1)" && code=0 || code=$?
-check "solo cuenta lo que llego a origin/main, no un commit local" "0|0" "$(tags_en "$REL" v2.0.0)|$(tags_en "$BARE" v2.0.0)"
+check "solo cuenta lo que llego a origin/main, no un commit local" "0|1|0|0" \
+  "$code|$(grep -c 'v1.0.0 ya esta publicada' <<< "$out")|$(tags_en "$REL" v2.0.0)|$(tags_en "$BARE" v2.0.0)"
+
+# Firma real, como en publicar.yml: llave SSH desechable y sin --no-signature.
+ssh-keygen -q -t ed25519 -N '' -C test -f "$WORK/firma" >/dev/null
+r config gpg.format ssh
+r config user.signingkey "$WORK/firma"
+r push -q origin main
+out="$(cd "$REL" && "$ROOT/scripts/tag-release.sh" --push 2>&1)" && code=0 || code=$?
+check "con llave firma el tag, check-tag lo acepta y se empuja" "0|1|1" \
+  "$code|$(grep -c 'ok   firmado' <<< "$out")|$(tags_en "$BARE" v2.0.0)"
+check "la firma del tag empujado es SSH" "1" \
+  "$(git -C "$BARE" cat-file tag v2.0.0 | grep -c '^-----BEGIN SSH SIGNATURE-----$')"
 
 exit $fail

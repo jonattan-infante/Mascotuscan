@@ -75,6 +75,11 @@ Si CI no pudo, el respaldo es el mismo script a mano, desde `main` al día y sin
 cambios: `make tag`. Para reintentar en CI sin otro merge, `publicar.yml` también
 corre con `workflow_dispatch`.
 
+Si el tag salió pero el release no (pasó con `v0.4.0`: "The job was not acquired
+by Runner of type hosted", por falta de runners macOS arm64), el tag está bien y
+no se toca. Se reintenta solo lo que falló, sobre el mismo tag:
+`gh run rerun <id> --failed`.
+
 ### Cómo se decide la versión
 
 `next-version.sh` lee los commits desde el último tag y aplica Conventional Commits:
@@ -112,7 +117,11 @@ y se quita lo que no se nota desde fuera.
 
 Una llave SSH ed25519 propia del job, que empuja y firma. Vive en el environment
 `release`, que solo acepta ramas protegidas, así que ni un PR ni otra rama la leen.
-Se genera y se registra una vez, y la copia local se borra:
+El job que la usa además exige `github.ref == 'refs/heads/main'`: el
+environment dejaría pasar cualquier otra rama que se proteja, y
+`workflow_dispatch` se puede lanzar desde cualquiera. Ese mismo job fija
+`actions/checkout` a un commit, porque es el paso que recibe la llave. Se genera
+y se registra una vez, y la copia local se borra:
 
 ```bash
 repo=repos/jonattan-infante/mascotuscan
