@@ -8,12 +8,12 @@ historial de git de este archivo (`git log -p claude-progress.md`).
 
 ## Estado verificado
 
-Fecha: **2026-11-16**. `main` en `8813d05` (#28), `VERSION` = `0.4.0`, publicada.
+Fecha: **2026-11-16**. `main` en `6435f5f` (#29), `VERSION` = `0.4.0`, publicada.
 
 ```
 make test-windows                         -> Ran 61 tests ... OK
 python3 -m unittest discover -s scripts/tests -> Ran 106 tests ... OK
-./scripts/test-release-tooling.sh         -> 28 ok, salida 0 (30 con #30)
+./scripts/test-release-tooling.sh         -> 30 ok, salida 0
 ./scripts/test-repo-integrity.sh          -> ok version 0.4.0 ..., ok cero emojis
 publicar.yml, corrida 43907356448         -> etiquetar y empujar: success
 git tag -v v0.4.0                         -> Good "git" signature with ED25519 key SHA256:9eG2Fi...
@@ -21,6 +21,8 @@ release.yml, corrida 43907451387          -> intento 1: macOS sin runner; intent
 gh release list -L 1                      -> mascotuscan 0.4.0  Latest  v0.4.0
 sha256sum -c del tarball                  -> La suma coincide; bin/mascotuscan: Mach-O 64-bit arm64
 verify sobre main, corrida 43907356423    -> runners macos-15 y macos-26
+publicar.yml tras #30, corrida 43942127907 -> v0.4.0 ya esta publicada: nada que hacer;
+                                             etiquetar y empujar: skipped
 ```
 
 R12 se cerró: `install.sh` clona `v0.4.0`, cuyo `Package.swift` compila
@@ -30,17 +32,15 @@ En vuelo:
 
 | PR | Qué | Estado |
 |---|---|---|
-| #30 | Correcciones de la revisión de #28: el job con la llave exige `main`, `actions/checkout` fijado, test de firma real, reintento del release documentado | abierto, CI corriendo |
-| #29 | Este archivo, `EXECUTION-PLAN.md`, README con estándares de proyecto abierto, `SECURITY.md` y `CODE_OF_CONDUCT.md` | abierto, actualizado contra `main` |
 | #26, #27 | La mascota recorre la pantalla (`roam`) | abiertos desde el 2026-09-28; heredan `macos-14` hasta actualizarse contra `main` |
 
 ## Próximo paso
 
-1. Revisar y mergear #30 y #29 (los dos tocan la publicación o las reglas: la
-   revisión de Claude espera aprobación del dueño).
-2. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
+1. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
    zshrc con solo el enganche nuevo y `mascotuscan --version` → `0.4.0` (F2).
-3. Actualizar #26 y #27 contra `main`, poner `claude:revisar` y revisar (F3).
+2. Actualizar #26 y #27 contra `main`, poner `claude:revisar` y revisar (F3).
+3. Bajar de 5 a 2 los jobs macOS por PR (B16): con el cupo de 5 y la falta de
+   runners, cada PR esperó entre uno y tres reintentos el 2026-11-16.
 
 Después, en el orden de `EXECUTION-PLAN.md` §En vuelo: revisor como check
 obligatorio, prueba real del permiso desde la burbuja, rutas que faltan del
@@ -90,7 +90,7 @@ actions/policies/14840  -> "revisor de Claude": pull_request_target y workflow_d
 | 2026-09-27 | Harness de issues: Claude evalúa con aprobación, reglas fijas y escaneo de secretos (`docs/adr/0011`, #19) |
 | 2026-09-28 | Harness de issues probado en GitHub con #20, #21 y #22 (#23). Respuesta según el tipo de issue y revisor de PRs bloqueante (`docs/adr/0012`, #24). Droide esférico animado (#25). PRs de `roam` abiertos (#26, #27) |
 | 2026-11-15 | Diagnóstico del harness tras siete semanas sin actividad: CI roto por el retiro de `macos-14` y `0.4.0` sin publicar. CI publica la versión al mergear y runners nuevos (#28, `docs/adr/0013`). Plan, progreso y README al día |
-| 2026-11-16 | #28 mergeado: `publicar.yml` etiquetó y firmó `v0.4.0` con la deploy key, y `release.yml` lo publicó al segundo intento por falta de runners macOS. R12 cerrado. Correcciones de la revisión en #30 |
+| 2026-11-16 | #28 mergeado: `publicar.yml` etiquetó y firmó `v0.4.0` con la deploy key, y `release.yml` lo publicó al segundo intento por falta de runners macOS. R12 cerrado. Correcciones de la revisión (#30), plan, progreso y README (#29). Política de Actions para el revisor ante el bloqueo de `pull_request_target` (R17) |
 
 ## Trampas que ya costaron tiempo
 

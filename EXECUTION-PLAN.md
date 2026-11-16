@@ -18,7 +18,7 @@ después, ordenado por valor sobre esfuerzo.
 | P0.2 | El binario arranca y responde | verde | misma corrida, paso "El binario responde": `mascotuscan 0.4.0` |
 | P0.3 | Port de Windows | verde | `make test-windows` → `Ran 61 tests ... OK`; job `port de Windows` en verde en la corrida 43789379493 |
 | P0.4 | Harness de issues y revisor de PRs | verde | `python3 -m unittest discover -s scripts/tests` → `Ran 106 tests ... OK` |
-| P0.5 | Herramientas de publicación | verde | `./scripts/test-release-tooling.sh` → 28 ok, salida 0 (con #28 en `main`, 2026-11-16) |
+| P0.5 | Herramientas de publicación | verde | `./scripts/test-release-tooling.sh` → 30 ok, salida 0 (`main` en `6435f5f`, 2026-11-16) |
 | P0.6 | Integridad del repo y la versión es una sola | verde | `./scripts/test-repo-integrity.sh` → `ok version 0.4.0 en VERSION, Paths.swift, __init__.py y CHANGELOG`, `ok cero emojis` |
 | P0.7 | CI en GitHub Actions | verde en `main` desde #28 | GitHub ya no acepta `macos-14` (`The configuration 'macos-14-arm64-us-default' is not supported`, corrida 43789379493). #28 pasó a `macos-15`/`macos-26`; `verify` sobre `8813d05`, corrida 43907356423 (2026-11-16) |
 | P0.8 | `main` protegido | verde | `gh api .../branches/main/protection/required_status_checks` → `build y tests (macos-15)`, `build y tests (macos-26)`, `shell e instalador`, `mascotas y marketplace` (desde 2026-11-16); push directo → `remote rejected (protected branch hook declined)`, con `enforce_admins: true` |
@@ -33,7 +33,6 @@ En orden de prioridad.
 
 | # | Cosa | Estado | Próximo paso concreto |
 |---|---|---|---|
-| F9 | Correcciones de la revisión de #28 | PR #30, abierto el 2026-11-16 (`gh pr view 30`): el job con la llave exige `main`, `actions/checkout` fijado a un commit, test de firma real y el de origin/main corregido. `test-release-tooling.sh` → 30 ok; dos mutantes caen | revisar y mergear #30 |
 | F2 | Migración de la máquina del autor a MascoTuscan (`docs/adr/0010`) | lista para hacer: `v0.4.0` es el último release desde el 2026-11-16 (`gh release list`) | `lucy update`; confirmar `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que `mascotuscan --version` responde |
 | F3 | La mascota recorre la pantalla mientras trabaja (`roam`) | PRs #26 y #27 abiertos desde el 2026-09-28; `claude/revision` en `failure` porque nadie aprobó la corrida | actualizarlos contra `main` (heredan los runners nuevos), poner `claude:revisar` y revisar |
 | F4 | Revisor de PRs como check obligatorio (`docs/adr/0012`) | en `main` desde #24; ya corrió en GitHub sobre #25 y #26 (`gh run list -w "claude revisa PRs"`). `claude/revision` no está entre los checks obligatorios | agregarlo en *Settings > Branches* y verificar los cuatro puntos de `docs/reference/claude-revision.md` §Sin verificar todavía |
@@ -86,6 +85,8 @@ decía la salida en ese momento.
 | Claude atiende issues dentro de un harness (`docs/adr/0011`) | #19, #23 y #24; probado en GitHub con #20, #21 y #22: aprobación, las tres rutas, caso hostil sin fugas |
 | Claude revisa cada PR con un status que bloquea (`docs/adr/0012`) | #24; `claude/revision` corrió en GitHub sobre #25 y #26 |
 | Droide esférico animado: quieto mira alrededor, trabajando rueda | #25, 9 tests en `BallRendererTests` |
+| La llave de publicación solo se usa desde `main` | #30 (`7b1006b`): el job `etiquetar` exige `refs/heads/main` y fija `actions/checkout` a un commit. Test de firma SSH real; dos mutantes de `tag-release.sh` caen. Tras el merge, `publicar.yml` (corrida 43942127907): `v0.4.0 ya esta publicada: nada que hacer` |
+| README con estándares de proyecto abierto, `SECURITY.md` y `CODE_OF_CONDUCT.md` | #29 (`6435f5f`); reporte privado de vulnerabilidades activado; `claude/revision` sin hallazgos en el último commit |
 
 ## Riesgos
 
@@ -114,6 +115,7 @@ Ordenado por valor sobre esfuerzo. El valor es una estimación; lo ajusta el due
 
 | # | Cosa | Por qué | Valor (estimado) | Esfuerzo |
 |---|---|---|---|---|
+| B16 | Bajar de 5 a 2 los jobs macOS por PR: juntar `shell e instalador` y `mascotas y marketplace` con el build, y `vista previa` solo con una etiqueta | el plan Free permite 5 jobs macOS a la vez; el 2026-11-16 GitHub canceló siete por falta de runner y cada PR necesitó reintentos (R16). Cambia los nombres de los checks obligatorios | alto | bajo |
 | B8 | Fórmula de Homebrew | `brew install` es lo que espera la gente en macOS; el release ya adjunta el tarball con su sha256 | alto | medio |
 | B3 | Recarga en caliente de `config.json` | hoy hay que reiniciar para cambiar `narrateEverySeconds` | medio | bajo |
 | B2 | Click derecho en el panel de estado → saltar a ese agente | el panel ya sabe el workspace de cada uno | medio | bajo |
