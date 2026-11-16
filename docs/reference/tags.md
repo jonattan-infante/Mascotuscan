@@ -75,6 +75,11 @@ Si CI no pudo, el respaldo es el mismo script a mano, desde `main` al día y sin
 cambios: `make tag`. Para reintentar en CI sin otro merge, `publicar.yml` también
 corre con `workflow_dispatch`.
 
+Si el tag salió pero el release no (pasó con `v0.4.0`: "The job was not acquired
+by Runner of type hosted", por falta de runners macOS arm64), el tag está bien y
+no se toca. Se reintenta solo lo que falló, sobre el mismo tag:
+`gh run rerun <id> --failed`.
+
 ### Cómo se decide la versión
 
 `next-version.sh` lee los commits desde el último tag y aplica Conventional Commits:
