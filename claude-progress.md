@@ -8,41 +8,46 @@ historial de git de este archivo (`git log -p claude-progress.md`).
 
 ## Estado verificado
 
-Fecha: **2026-11-16**. `main` en `b431d5c` (#25), `VERSION` = `0.4.0`.
+Fecha: **2026-11-16**. `main` en `8813d05` (#28), `VERSION` = `0.4.0`, publicada.
 
 ```
 make test-windows                         -> Ran 61 tests ... OK
 python3 -m unittest discover -s scripts/tests -> Ran 106 tests ... OK
-./scripts/test-release-tooling.sh         -> 19 ok, salida 0
+./scripts/test-release-tooling.sh         -> 28 ok, salida 0 (30 con #30)
 ./scripts/test-repo-integrity.sh          -> ok version 0.4.0 ..., ok cero emojis
-verify en main, corrida 43789379493       -> macos-15: Executed 157 tests, with 0 failures;
-                                             El binario responde: mascotuscan 0.4.0
-gh release list -L 1                      -> lucy 0.3.0  Latest  v0.3.0
-git show v0.3.0:Package.swift             -> name: "lucy"
+publicar.yml, corrida 43907356448         -> etiquetar y empujar: success
+git tag -v v0.4.0                         -> Good "git" signature with ED25519 key SHA256:9eG2Fi...
+release.yml, corrida 43907451387          -> intento 1: macOS sin runner; intento 2: success
+gh release list -L 1                      -> mascotuscan 0.4.0  Latest  v0.4.0
+sha256sum -c del tarball                  -> La suma coincide; bin/mascotuscan: Mach-O 64-bit arm64
+verify sobre main, corrida 43907356423    -> runners macos-15 y macos-26
 ```
 
-Dos cosas rotas, las dos con arreglo en vuelo:
-
-1. **CI no puede correr en `macos-14`.** En la corrida 43789379493, cada job ahí
-   terminó cancelado con `The configuration 'macos-14-arm64-us-default' is not
-   supported`. Tres de los cuatro checks obligatorios de `main` corren en ese
-   runner, así que ningún PR puede entrar. `release.yml` también compilaba ahí.
-2. **La instalación de macOS falla (R12).** `0.4.0` entró a `main` el 2026-09-27
-   (#18) y nunca se etiquetó. `install.sh` instala `v0.3.0`, que compila `lucy`,
-   y muere en `install.sh:122` buscando `mascotuscan`.
+R12 se cerró: `install.sh` clona `v0.4.0`, cuyo `Package.swift` compila
+`mascotuscan`. Falta verlo en una Mac real (F2).
 
 En vuelo:
 
 | PR | Qué | Estado |
 |---|---|---|
-| #28 | Runners a `macos-15`/`macos-26`; `publicar.yml` + `scripts/tag-release.sh`: CI etiqueta y publica al mergear un `VERSION` sin tag (`docs/adr/0013`); notas de `0.4.0` completas | abierto, todos los checks de CI en verde (corrida 43789896230); `claude/revision` espera aprobación |
-| rama `docs/estado-y-readme` | Este archivo, `EXECUTION-PLAN.md`, README con estándares de proyecto abierto, `SECURITY.md` y `CODE_OF_CONDUCT.md` | abierto; sus checks esperan a #28 |
-| #26, #27 | La mascota recorre la pantalla (`roam`) | abiertos desde el 2026-09-28; heredan el CI roto hasta actualizarse contra `main` |
+| #30 | Correcciones de la revisión de #28: el job con la llave exige `main`, `actions/checkout` fijado, test de firma real, reintento del release documentado | abierto, CI corriendo |
+| #29 | Este archivo, `EXECUTION-PLAN.md`, README con estándares de proyecto abierto, `SECURITY.md` y `CODE_OF_CONDUCT.md` | abierto, actualizado contra `main` |
+| #26, #27 | La mascota recorre la pantalla (`roam`) | abiertos desde el 2026-09-28; heredan `macos-14` hasta actualizarse contra `main` |
 
 ## Próximo paso
 
-Configuración de una vez en GitHub, **aplicada el 2026-11-16** con la cuenta del
-dueño (comandos en `docs/reference/tags.md`):
+1. Revisar y mergear #30 y #29 (los dos tocan la publicación o las reglas: la
+   revisión de Claude espera aprobación del dueño).
+2. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
+   zshrc con solo el enganche nuevo y `mascotuscan --version` → `0.4.0` (F2).
+3. Actualizar #26 y #27 contra `main`, poner `claude:revisar` y revisar (F3).
+
+Después, en el orden de `EXECUTION-PLAN.md` §En vuelo: revisor como check
+obligatorio, prueba real del permiso desde la burbuja, rutas que faltan del
+harness de issues, paridad de dibujos en Windows.
+
+Configuración de GitHub aplicada el 2026-11-16 con la cuenta del dueño (comandos
+en `docs/reference/tags.md`):
 
 ```
 required_status_checks  -> build y tests (macos-15), build y tests (macos-26),
@@ -53,19 +58,6 @@ secret --env release    -> RELEASE_SSH_KEY (la copia local se borró con shred)
 rulesets/23606182       -> bypass DeployKey + RepositoryRole 5; reglas y condiciones intactas
 private-vulnerability-reporting -> enabled: true; descripción y topics del repo al día
 ```
-
-1. **Revisar y mergear #28** (poner `claude:revisar` para que lo revise Claude) y
-   verificar: `publicar.yml` crea `v0.4.0`, el push con la deploy key dispara
-   `release.yml` (hipótesis sin verificar hasta entonces), `gh release view
-   v0.4.0` muestra el tarball, y `curl ... | bash` instala.
-2. Actualizar contra `main` la rama de docs y los PRs #26 y #27, para que corran
-   con los runners nuevos.
-3. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
-   zshrc con solo el enganche nuevo y `mascotuscan --version` (F2).
-
-Después, en el orden de `EXECUTION-PLAN.md` §En vuelo: `roam`, revisor como
-check obligatorio, prueba real del permiso desde la burbuja, rutas que faltan
-del harness de issues, paridad de dibujos en Windows.
 
 ## Decisiones vigentes que no están en un ADR
 
@@ -96,6 +88,7 @@ del harness de issues, paridad de dibujos en Windows.
 | 2026-09-27 | Harness de issues: Claude evalúa con aprobación, reglas fijas y escaneo de secretos (`docs/adr/0011`, #19) |
 | 2026-09-28 | Harness de issues probado en GitHub con #20, #21 y #22 (#23). Respuesta según el tipo de issue y revisor de PRs bloqueante (`docs/adr/0012`, #24). Droide esférico animado (#25). PRs de `roam` abiertos (#26, #27) |
 | 2026-11-15 | Diagnóstico del harness tras siete semanas sin actividad: CI roto por el retiro de `macos-14` y `0.4.0` sin publicar. CI publica la versión al mergear y runners nuevos (#28, `docs/adr/0013`). Plan, progreso y README al día |
+| 2026-11-16 | #28 mergeado: `publicar.yml` etiquetó y firmó `v0.4.0` con la deploy key, y `release.yml` lo publicó al segundo intento por falta de runners macOS. R12 cerrado. Correcciones de la revisión en #30 |
 
 ## Trampas que ya costaron tiempo
 
@@ -143,6 +136,10 @@ No volver a caer en estas. Todas están documentadas con evidencia en
 17. **Un paso manual que nadie recuerda no ocurre.** `0.4.0` esperó siete semanas
     un `make tag`. Mientras tanto GitHub retiró `macos-14` y el commit de esa
     versión quedó sin poder publicarse. De ahí `docs/adr/0013`.
+18. **Un job de macOS en cola no es un job colgado de tu lado.** Con
+    `v0.4.0`, GitHub no tuvo runners arm64 y canceló el job a los 15 minutos
+    ("The job was not acquired by Runner of type hosted"). El tag estaba bien:
+    `gh run rerun <id> --failed`, nunca un tag nuevo.
 
 ## Checklist de fin de sesión
 

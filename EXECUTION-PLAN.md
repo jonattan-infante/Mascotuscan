@@ -18,25 +18,24 @@ después, ordenado por valor sobre esfuerzo.
 | P0.2 | El binario arranca y responde | verde | misma corrida, paso "El binario responde": `mascotuscan 0.4.0` |
 | P0.3 | Port de Windows | verde | `make test-windows` → `Ran 61 tests ... OK`; job `port de Windows` en verde en la corrida 43789379493 |
 | P0.4 | Harness de issues y revisor de PRs | verde | `python3 -m unittest discover -s scripts/tests` → `Ran 106 tests ... OK` |
-| P0.5 | Herramientas de publicación | verde | `./scripts/test-release-tooling.sh` → 19 ok, salida 0 |
+| P0.5 | Herramientas de publicación | verde | `./scripts/test-release-tooling.sh` → 28 ok, salida 0 (con #28 en `main`, 2026-11-16) |
 | P0.6 | Integridad del repo y la versión es una sola | verde | `./scripts/test-repo-integrity.sh` → `ok version 0.4.0 en VERSION, Paths.swift, __init__.py y CHANGELOG`, `ok cero emojis` |
-| P0.7 | CI en GitHub Actions | **rojo en `main`**, verde en #28 | GitHub ya no acepta `macos-14`: cada job ahí termina con `The configuration 'macos-14-arm64-us-default' is not supported` (corrida 43789379493). En #28, con `macos-15`/`macos-26`, todos los jobs en verde (corrida 43789896230). Se cierra al mergear #28 (F1) |
+| P0.7 | CI en GitHub Actions | verde en `main` desde #28 | GitHub ya no acepta `macos-14` (`The configuration 'macos-14-arm64-us-default' is not supported`, corrida 43789379493). #28 pasó a `macos-15`/`macos-26`; `verify` sobre `8813d05`, corrida 43907356423 (2026-11-16) |
 | P0.8 | `main` protegido | verde | `gh api .../branches/main/protection/required_status_checks` → `build y tests (macos-15)`, `build y tests (macos-26)`, `shell e instalador`, `mascotas y marketplace` (desde 2026-11-16); push directo → `remote rejected (protected branch hook declined)`, con `enforce_admins: true` |
 | P0.9 | Working tree limpio | verde | `git status --short` vacío en `main` |
 
-Hasta que entre #28, un PR basado en `main` no puede pasar los checks obligatorios:
-su `ci.yml` todavía pide `macos-14`. Al entrar #28, cada PR abierto se actualiza
-contra `main`.
+Un PR abierto antes de #28 hereda `macos-14` en su `ci.yml` y no puede pasar los
+checks obligatorios hasta actualizarse contra `main`.
 
 ## En vuelo
 
-En orden de prioridad. El primero bloquea a los demás.
+En orden de prioridad.
 
 | # | Cosa | Estado | Próximo paso concreto |
 |---|---|---|---|
-| F1 | **Publicar `0.4.0` y que CI publique cada versión** (`docs/adr/0013`) | PR #28 abierto y en verde: runners a `macos-15`/`macos-26`, `publicar.yml` y `scripts/tag-release.sh`. `VERSION` dice `0.4.0` desde el 2026-09-27 (#18), pero el último release es `v0.3.0` (`gh release list`); mientras tanto `curl ... \| bash` falla (R12). Configuración de una vez aplicada el 2026-11-16: checks obligatorios con `macos-26`, environment `release` (`protected_branches: true`), deploy key `publicar version (CI)` con escritura, secreto `RELEASE_SSH_KEY` en el environment y bypass `DeployKey` en el ruleset 23606182 | revisar y mergear #28; confirmar que `publicar.yml` crea `v0.4.0`, que el push con la deploy key dispara `release.yml` y `gh release view v0.4.0` |
-| F2 | Migración de la máquina del autor a MascoTuscan (`docs/adr/0010`) | depende de F1: `lucy update` solo migra cuando existe un release `mascotuscan` | `lucy update`; confirmar `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que `mascotuscan --version` responde |
-| F3 | La mascota recorre la pantalla mientras trabaja (`roam`) | PRs #26 y #27 abiertos desde el 2026-09-28; `claude/revision` en `failure` porque nadie aprobó la corrida | tras F1, actualizarlos contra `main` (heredan los runners nuevos), poner `claude:revisar` y revisar |
+| F9 | Correcciones de la revisión de #28 | PR #30: el job con la llave exige `main`, `actions/checkout` fijado a un commit, test de firma real y el de origin/main corregido. `test-release-tooling.sh` → 30 ok; dos mutantes caen | revisar y mergear #30 |
+| F2 | Migración de la máquina del autor a MascoTuscan (`docs/adr/0010`) | lista para hacer: `v0.4.0` es el último release desde el 2026-11-16 (`gh release list`) | `lucy update`; confirmar `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que `mascotuscan --version` responde |
+| F3 | La mascota recorre la pantalla mientras trabaja (`roam`) | PRs #26 y #27 abiertos desde el 2026-09-28; `claude/revision` en `failure` porque nadie aprobó la corrida | actualizarlos contra `main` (heredan los runners nuevos), poner `claude:revisar` y revisar |
 | F4 | Revisor de PRs como check obligatorio (`docs/adr/0012`) | en `main` desde #24; ya corrió en GitHub sobre #25 y #26 (`gh run list -w "claude revisa PRs"`). `claude/revision` no está entre los checks obligatorios | agregarlo en *Settings > Branches* y verificar los cuatro puntos de `docs/reference/claude-revision.md` §Sin verificar todavía |
 | F5 | Responder permiso/pregunta desde la burbuja: prueba real (`docs/adr/0009`) | código y botones en `main` (#15, #16); probado contra el RPC, no contra un permiso real ⚠️ 2026-09-27 | en un workspace descartable, provocar un permiso, hacer clic en la burbuja y confirmar en el pane que el agente siguió con esa respuesta |
 | F6 | Harness de issues: las rutas que faltan (`docs/adr/0011`) | probado en GitHub con #20, #21 y #22 (§Verificado en GitHub de `docs/reference/claude-issues.md`) | un error evidente real que termine en PR con CI, y un rechazo de `implementar` ⚠️ 2026-09-28 |
@@ -76,7 +75,8 @@ decía la salida en ese momento.
 | Versión del producto con fuente única y guarda | `VERSION` + `scripts/bump-version.sh`; la integridad compara cuatro sitios y falla en negativo |
 | Aviso de versión nueva, mismo contrato en macOS y Windows | `docs/reference/versioning.md`; 14 tests en `UpdateTests.swift` y 17 en `test_update.py` con los mismos casos; punta a punta con `LUCY_UPDATE_URL=file://…`: un solo aviso, `update.json` con `announced` |
 | `update [--check]` en macOS contra un release real | máquina del autor: `0.2.0` → `update --check` decía "Hay una versión nueva: 0.2.2" → `update` → `0.2.2` → "Estás en la última versión publicada". `python install.py --update` en Windows solo probado por lectura ⚠️ 2026-09-17 |
-| Releases publicados por tag | `v0.2.0`, `v0.2.2` y `v0.3.0` con `release.yml` en verde y tarball + sha256 (`gh release list`). `v0.2.1` se perdió por un bug de CI con tags anotados (R11) y se documentó como no publicado |
+| Releases publicados por tag | `v0.2.0`, `v0.2.2`, `v0.3.0` y `v0.4.0` con `release.yml` en verde y tarball + sha256 (`gh release list`). `v0.2.1` se perdió por un bug de CI con tags anotados (R11) y se documentó como no publicado |
+| CI publica la versión al mergear (`docs/adr/0013`) | #28 (`8813d05`). `publicar.yml` (corrida 43907356448) creó `v0.4.0`: tag anotado sobre `8813d05`, `git tag -v` → `Good "git" signature with ED25519 key SHA256:9eG2Fi…`, con los `###` de las notas intactos. El push con la deploy key disparó `release.yml` (corrida 43907451387; el intento 1 no consiguió runner macOS, el 2 publicó). `sha256sum -c` del tarball ok; `bin/mascotuscan` es `Mach-O 64-bit arm64` |
 | Reglas de tags con verificación y protección | `docs/reference/tags.md`; `scripts/check-tag.sh` en el gate y en CI; ruleset `tags de version` (id 23606182) sobre `refs/tags/v*`, bypass del administrador probado en `v0.2.1`/`v0.2.2` |
 | Versión y notas propuestas desde los commits | `make next-version` y `make release-notes` (Conventional Commits → Keep a Changelog), en `test-release-tooling.sh` |
 | Instalador de macOS clona el último release | `install.sh`: resuelve `tag_name` de `releases/latest` y cae a `main` si no hay, diciéndolo |
@@ -97,15 +97,15 @@ decía la salida en ese momento.
 | R5 | Un pack del marketplace trae arte de un personaje con dueño | problema legal para el autor y para el índice | regla explícita en `docs/marketplace.md`, revisión en el PR, y se quita del índice al detectarlo. **Depende de revisión humana** ⚠️ 2026-07-31 |
 | R6 | Un pack malicioso apunta sprites fuera de su carpeta | leer archivos del usuario | `..` prohibido en rutas, cubierto por test. Un pack no ejecuta código: solo aporta texto e imágenes |
 | R7 | El registro crece y el `git clone --depth 1` por install se vuelve costoso | instalación lenta | hoy son 2 entradas (`registry.json`); si crece, cachear o servir tarballs |
-| R8 | `release.yml` falla en un tag | no hay release y nadie recibe el aviso; el instalador sigue en la última publicada | ocurrió en `v0.2.1` (R11). Pasa también si su runner deja de existir: el `release.yml` del commit de `0.4.0` usa `macos-14` (ver R16) |
+| R8 | `release.yml` falla en un tag | no hay release y nadie recibe el aviso; el instalador sigue en la última publicada | ocurrió en `v0.2.1` (R11) y en `v0.4.0`, por falta de runner (R16). Si el tag salió bien, `gh run rerun <id> --failed` publica sobre el mismo tag (`docs/reference/tags.md`) |
 | R9 | La burbuja de actualización en Tk (Windows) no se ha visto en una máquina Windows real | el aviso podría no mostrarse aunque la lógica esté probada | la lógica pura tiene 17 tests y `Checker` está probado con `file://`; falta `--selftest` con `MASCOTUSCAN_UPDATE_URL` en Windows ⚠️ 2026-09-17 |
 | R10 | El bypass del ruleset de tags no aplica al dueño y `make tag` no puede empujar | el tag queda en local; nada publicado | verificado con `v0.2.1` y `v0.2.2`: GitHub reporta "Bypassed rule violations" |
 | R11 | GitHub Actions entrega el ref de un tag apuntando al commit, no al objeto tag anotado | `check-tag.sh` en CI rechaza cualquier tag real como "ligero" | `git fetch --tags --force origin` tras el checkout; documentado en `release.yml` y en el CHANGELOG de `0.2.2` |
-| R12 | `install.sh` de `main` clona el último release, que compila `lucy` y no `mascotuscan` | `curl ... \| bash` falla con "no encuentro el binario compilado" | **ocurriendo desde el 2026-09-27**: `v0.3.0` es el último release y su `Package.swift` declara `name: "lucy"`. Se cierra con F1 |
+| R12 | `install.sh` de `main` clona el último release, que compila `lucy` y no `mascotuscan` | `curl ... \| bash` falla con "no encuentro el binario compilado" | **cerrado el 2026-11-16**: el último release es `v0.4.0` (`releases/latest` → `tag_name: v0.4.0`) y su `Package.swift` declara `name: "mascotuscan"`. Falta verlo en una Mac real (F2) |
 | R13 | Un issue hostil (prompt injection) engaña a Claude en el harness de issues | un diagnóstico o un parche que no corresponde | Claude no tiene comandos, red ni escritura; la guardia y el escaneo de secretos son código con tests; `evaluar` y todo cambio estructural esperan aprobación; ningún PR se mergea solo |
 | R14 | Un PR hostil engaña a Claude para que apruebe, o un falso positivo bloquea un PR correcto | un merge sin revisión real, o un PR frenado | el status lo decide el harness; una credencial agregada bloquea aunque Claude apruebe; el código del PR nunca se ejecuta; los PRs sensibles y los forks esperan aprobación. Ante un falso positivo, `claude:revision-anulada` |
-| R15 | Se filtra la llave de publicación de CI (`RELEASE_SSH_KEY`) | alguien crea tags `v*` o empuja ramas sin protección | vive en el environment `release`, que solo acepta ramas protegidas; `main` le exige PR y checks como a cualquiera. Se revoca borrando la deploy key (`gh repo deploy-key delete`) |
-| R16 | GitHub retira un runner que usa CI | checks obligatorios que nunca llegan a correr: ningún PR entra, ningún release sale | pasó con `macos-14` (P0.7). Revisar los avisos de retiro de imágenes de GitHub antes de cada release |
+| R15 | Se filtra la llave de publicación de CI (`RELEASE_SSH_KEY`) | alguien crea tags `v*` o empuja ramas sin protección | vive en el environment `release`, que solo acepta ramas protegidas, y con #30 el job además exige `main`; `main` le exige PR y checks como a cualquiera. Se revoca borrando la deploy key (`gh repo deploy-key delete`) |
+| R16 | GitHub retira un runner que usa CI | checks obligatorios que nunca llegan a correr: ningún PR entra, ningún release sale | pasó con `macos-14` (P0.7). Variante: la imagen existe pero no hay capacidad. El job de macOS de `v0.4.0` terminó con `The job was not acquired by Runner of type hosted even after multiple attempts`, y se reintentó. Revisar los avisos de retiro de imágenes de GitHub antes de cada release |
 
 ## Backlog
 
