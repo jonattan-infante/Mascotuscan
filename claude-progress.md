@@ -31,15 +31,22 @@ claude/revision de #26, corrida 43949845781 -> No bloquea: 4 medios, 2 bajos
 R12 se cerró: `install.sh` clona `v0.4.0`, cuyo `Package.swift` compila
 `mascotuscan`. Falta verlo en una Mac real (F2).
 
-En vuelo: ningún PR.
+En vuelo: el PR de `chore/equipo-de-agentes` (cinco agentes, `docs/adr/0015`).
 
 ## Próximo paso
 
-1. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
+1. Mergear el PR del equipo de agentes. Es sensible (toca `.claude/`,
+   `CLAUDE.md` y `AGENTS.md`), así que el revisor de CI espera la aprobación del
+   dueño en el environment `claude`.
+2. Piloto F9: `pet-product` escribe la spec de Claude Code nativo en macOS y el
+   autor la aprueba. Después, el flujo de `AGENTS.md`. Los agentes de
+   `.claude/agents/` se cargan en la misma sesión en que se crean (verificado el
+   2026-11-16: aparecieron como tipos de agente sin reiniciar).
+3. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
    zshrc con solo el enganche nuevo y `mascotuscan --version` → `0.4.0` (F2).
-2. Bajar de 5 a 2 los jobs macOS por PR (B16): con el cupo de 5 y la falta de
+4. Bajar de 5 a 2 los jobs macOS por PR (B16): con el cupo de 5 y la falta de
    runners, cada PR esperó entre uno y tres reintentos el 2026-11-16.
-3. Validar que las rutas de `sprites` y `roam` no salgan del paquete por un
+5. Validar que las rutas de `sprites` y `roam` no salgan del paquete por un
    enlace simbólico (R18).
 
 Después, en el orden de `EXECUTION-PLAN.md` §En vuelo: `roam` en Windows,
@@ -91,6 +98,7 @@ actions/policies/14840  -> "revisor de Claude": pull_request_target y workflow_d
 | 2026-09-28 | Harness de issues probado en GitHub con #20, #21 y #22 (#23). Respuesta según el tipo de issue y revisor de PRs bloqueante (`docs/adr/0012`, #24). Droide esférico animado (#25). PRs de `roam` abiertos (#26, #27) |
 | 2026-11-15 | Diagnóstico del harness tras siete semanas sin actividad: CI roto por el retiro de `macos-14` y `0.4.0` sin publicar. CI publica la versión al mergear y runners nuevos (#28, `docs/adr/0013`). Plan, progreso y README al día |
 | 2026-11-16 | #28 mergeado: `publicar.yml` etiquetó y firmó `v0.4.0` con la deploy key, y `release.yml` lo publicó al segundo intento por falta de runners macOS. R12 cerrado. Correcciones de la revisión (#30), plan, progreso y README (#29). Política de Actions para el revisor ante el bloqueo de `pull_request_target` (R17). #26 y #27 mergeados (`roam`, `docs/adr/0014`). El autor declaró lista la actualización del repo |
+| 2026-11-16 | Equipo de cinco agentes en `.claude/agents/` con un archivo por agente por feature (`docs/adr/0015`). `PRODUCT.md` y `CLAUDE.md` tratan a cmux como un cliente más, con matriz de clientes; se detecta que Claude Code nativo no llega a la mascota en macOS (hipótesis, piloto F9) |
 
 ## Trampas que ya costaron tiempo
 

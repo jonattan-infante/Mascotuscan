@@ -1,20 +1,21 @@
 # CLAUDE.md — router del repositorio
 
-MascoTuscan: plataforma de mascotas de escritorio para tus agentes de IA. El
-programa decide **cuándo** hablar; un paquete instalable decide **cómo se ve y
-cómo habla**. En macOS observa [cmux](https://cmux.com) y está en Swift, sin
-dependencias; en Windows observa Claude Code directamente.
+MascoTuscan: mascotas de escritorio para tus agentes de IA. El programa decide
+**cuándo** hablar; un paquete instalable, **cómo se ve y cómo habla**. macOS va en
+Swift sin dependencias; Windows, en Python. **cmux es un cliente, no el producto**:
+los eventos entran por `EventSource`, y los límites que nombran cmux son de su
+adapter (`docs/reference/cmux-events.md`).
 
 ## Antes de empezar una sesión
 
 1. Leer `claude-progress.md` — estado verificado y próximo paso.
 2. Leer `EXECUTION-PLAN.md` — qué está en vuelo y qué ya se entregó (no re-trabajar).
 3. Según la tarea, leer **una** de estas y no todas:
+   - trabajo una feature con el equipo de agentes → `AGENTS.md` (flujo y artefactos)
    - toco el formato de paquete → `docs/reference/pet-pack.md` (es el contrato)
    - toco el marketplace → `docs/marketplace.md`
    - toco el dibujo o la animación → `ARCHITECTURE.md` §Vistas
-   - toco una fuente de eventos (cmux, hooks, o agrego una nueva) →
-     `docs/reference/event-source.md` (es el contrato) + `docs/reference/cmux-events.md`
+   - toco o agrego una fuente de eventos → `docs/reference/event-source.md` (es el contrato)
    - toco cómo se responde un permiso o una pregunta → `docs/reference/agent-reply.md`
      (es el contrato) + `docs/adr/0009`
    - toco los textos o la voz → `docs/adr/0002` y `docs/adr/0005`
