@@ -38,9 +38,10 @@ En vuelo: el PR de `chore/equipo-de-agentes` (cinco agentes, `docs/adr/0015`).
 1. Mergear el PR del equipo de agentes. Es sensible (toca `.claude/`,
    `CLAUDE.md` y `AGENTS.md`), así que el revisor de CI espera la aprobación del
    dueño en el environment `claude`.
-2. Piloto F9, en una sesión nueva para que Claude Code cargue `.claude/agents/`:
-   `pet-product` escribe la spec de Claude Code nativo en macOS y el autor la
-   aprueba. Después, el flujo de `AGENTS.md`.
+2. Piloto F9: `pet-product` escribe la spec de Claude Code nativo en macOS y el
+   autor la aprueba. Después, el flujo de `AGENTS.md`. Los agentes de
+   `.claude/agents/` se cargan en la misma sesión en que se crean (verificado el
+   2026-11-16: aparecieron como tipos de agente sin reiniciar).
 3. En la máquina del autor: `lucy update`, y confirmar `~/.mascotuscan`, el
    zshrc con solo el enganche nuevo y `mascotuscan --version` → `0.4.0` (F2).
 4. Bajar de 5 a 2 los jobs macOS por PR (B16): con el cupo de 5 y la falta de
