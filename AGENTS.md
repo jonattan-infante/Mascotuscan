@@ -1,89 +1,126 @@
 # AGENTS.md
 
-Catálogo de agentes del repo. **Tres, no nueve**: cada agente sin consumidor claro
-es deuda de contexto.
+Catálogo de agentes del repo y flujo por feature: cinco agentes, un archivo por
+agente en cada feature. Las definiciones que carga Claude Code están en
+`.claude/agents/`; este archivo es el mapa. Por qué cinco: `docs/adr/0015`.
 
-La regla estructural es la separación maker/checker: **quien implementa nunca
-valida su propio trabajo.** Un modelo es el mejor abogado defensor de su propia
-salida.
+Dos reglas estructurales:
 
-Todos arrancan desde artefactos en disco, no del prompt de quien los llama, así
-que funcionan igual orquestados o por separado.
+- **Maker/checker: quien implementa nunca valida su propio trabajo.** Un modelo es
+  el mejor abogado defensor de su propia salida.
+- **cmux es un cliente, no el producto.** Ningún agente diseña, implementa ni
+  aprueba algo que solo funcione con un cliente sin declararlo en la spec. Hoy
+  los clientes son cmux, la shell y los hooks de Claude Code; después vienen
+  OpenCode, wmux y los que sigan (`docs/reference/event-source.md`).
 
-## `pet-maker` — implementa
+## El equipo
 
-**Cuándo:** hay una feature con spec en `docs/features/FEAT-XXX/01-spec.md`.
+| Agente | Rol | Escribe, y nada más | Nunca hace |
+|---|---|---|---|
+| `pet-product` | qué se construye y cuándo está terminado | `01-spec.md`, `PRODUCT.md`, backlog de `EXECUTION-PLAN.md` | código, arte, controles |
+| `pet-ux` | cómo se ve, se lee y habla: estados, burbuja, panel, voz, CLI, guía de packs | `02-ux.md` y su imagen | lógica, cambiar casos |
+| `pet-security` | amenazas en las fronteras y si sus controles existen | `03-seguridad.md` | arreglar código |
+| `pet-developer` | implementa en Swift y Python con los mismos tests | código, tests, `ARCHITECTURE.md`, `04-entrega.md` | aprobar su trabajo |
+| `pet-qa` | intenta refutar que funcione y que se vea bien | `05-qa.md` | arreglar código |
 
-**Lee al arrancar:** `claude-progress.md`, `EXECUTION-PLAN.md`, `CLAUDE.md`, la
-spec de la feature, y **solo** la sección de `ARCHITECTURE.md` que toca su cambio.
+## Flujo por feature
 
-**Entrega:** código + tests + `05-qa-report.md` con la salida de `make verify`
-pegada y el SHA del commit.
-
-**No hace:** no aprueba su propio trabajo, no escribe ADRs sin que la decisión
-esté discutida, no toca `docs/adr/` existentes.
-
-## `pet-checker` — verifica que funcione
-
-**Cuándo:** `pet-maker` entregó y hay un `05-qa-report.md`.
-
-**Lente:** funcional. Corre `make verify` él mismo en vez de creerle al reporte,
-y busca los casos que la spec pide pero el test no cubre.
-
-**Lee al arrancar:** la spec, el diff, el qa-report. **No lee** el razonamiento
-del maker: tiene que llegar a su propia conclusión.
-
-**Entrega:** `07-review.md` con veredicto y, por cada hallazgo, el caso concreto
-que falla (entrada → salida esperada → salida real).
-
-**Sesgo obligatorio:** intenta **refutar** que funcione. Si no encuentra nada,
-lo dice; no invente hallazgos para justificar la corrida.
-
-## `pet-visual-checker` — verifica que se vea bien
-
-**Cuándo:** el cambio toca `Views/`, la paleta, el layout, los textos, o un pet
-pack.
-
-**Por qué existe:** este repo tiene un juez mecánico para lo visual. `make render`
-escribe un PNG por estado sin abrir ventana, así que un agente puede **mirar** el
-resultado en vez de suponerlo. Sin ese modo, este agente no tendría razón de ser.
-
-**Qué hace:**
-
-```bash
-make render          # ./render/todos.png, panel.png, burbuja-*.png
+```
+idea, issue o fila del backlog
+      │
+      ▼
+pet-product ──► 01-spec.md: casos, Toca, Fuentes
+      │         Jonattan firma §Aprobación
+      ├── Toca vista o texto ──► pet-ux ─────────► 02-ux.md + imagen
+      ├── Toca frontera ───────► pet-security ───► 03-seguridad.md §Antes (casos S)
+      ▼
+pet-developer ──► código, tests, PR y 04-entrega.md
+      │
+      ├──► pet-qa ─────────► 05-qa.md: veredicto por caso
+      └──► pet-security ───► 03-seguridad.md §Después (si toca frontera)
+      │
+      ├── rechazado o bloqueado: vuelve a pet-developer con el caso que falla
+      ▼
+pet-product llena §Aceptación ──► Jonattan mergea: "listo"
 ```
 
-Y después abre las imágenes y las revisa contra esta lista:
+| Paso | Empieza cuando | Termina cuando |
+|---|---|---|
+| `pet-product` | hay una idea, un issue o una fila del backlog | cada caso dice cómo se comprueba y Jonattan firmó §Aprobación |
+| `pet-ux` | spec aprobada con "Toca: vista o texto" | cada caso visible tiene texto exacto o imagen |
+| `pet-security` §Antes | spec aprobada con "Toca: frontera" | cada amenaza tiene control y caso S |
+| `pet-developer` | spec aprobada, y UX y seguridad terminados si les tocaba | gate verde, PR abierto, cada caso con test |
+| `pet-qa` | hay `04-entrega.md` y PR | veredicto por cada caso |
+| `pet-security` §Después | hay `04-entrega.md` y la spec toca frontera | cada control con `archivo:línea` |
+| `pet-product` acepta | QA `aprobado` y seguridad sin bloqueantes | §Aceptación llena |
+| Jonattan | producto aceptó | `make merge` |
 
-- Los 6 estados se distinguen entre sí de un vistazo.
-- Si el cambio toca un pack: `mascotuscan validate` pasa, y `make render` con esa
-  mascota activa muestra sus colores, no los de otra.
-- Ningún texto se corta ni se sale de su tarjeta (el defecto de `docs/adr/0003`
-  se detectó exactamente así).
-- La tarjeta no cambia de tamaño entre "escribiendo" y "completo".
-- Contraste legible del texto sobre el fondo oscuro.
-- Sin emojis.
+Fronteras que llaman a `pet-security`, lista cerrada: una fuente de eventos nueva
+o cambiada; `PetPack.load` y packs de terceros; `install` desde URL o
+marketplace; aviso y descarga de versión; escritura en la configuración del
+usuario; respuesta a permisos o preguntas de un agente; workflows de CI y sus
+prompts. El porqué de cada una está en `.claude/agents/pet-security.md`.
 
-**Entrega:** veredicto + qué imagen lo demuestra.
+Reglas del ciclo:
+
+- **Jonattan aprueba cada spec** antes de que empiece UX, seguridad o desarrollo
+  (decisión del 2026-11-16, al menos para las primeras features).
+- Si la feature cambia el orquestador, al menos un caso usa dos `source`
+  distintos.
+- Lo fuera de alcance vuelve a `pet-product`, que lo lleva al backlog con
+  severidad. No se arregla de paso.
+- Una spec ambigua o un choque entre UX y spec vuelve a `pet-product`. Nadie
+  inventa.
+- Cada agente arranca de los archivos de la feature, no del prompt de quien lo
+  llama: funcionan igual orquestados o por separado.
+- Solo se crean los archivos que tocan: una feature sin vista no tiene `02-ux.md`.
+- Una decisión durable no se queda en un artefacto: va a un ADR nuevo.
+
+## Artefactos
+
+Plantillas en `docs/features/_template/`. Si un artefacto no cabe en su tope, la
+feature es demasiado grande y `pet-product` la parte.
+
+| Archivo | Dueño | Qué lleva | Tope |
+|---|---|---|---|
+| `01-spec.md` | `pet-product` | problema, fuera de alcance, Toca, Fuentes, casos, aprobación, aceptación | 60 líneas |
+| `02-ux.md` | `pet-ux` | qué ve el usuario por caso, sin el cliente que lo permite, textos exactos, medidas | 40 líneas e imagen |
+| `03-seguridad.md` | `pet-security` | §Antes: entrada, abuso, control, caso S · §Después: control en `archivo:línea` | 40 líneas |
+| `04-entrega.md` | `pet-developer` | SHA, PR, gate pegado, caso y test por runtime, lo que quedó fuera | 30 líneas y la salida |
+| `05-qa.md` | `pet-qa` | veredicto, gate reproducido, caso por fuente, imágenes, hallazgos, refutación | 50 líneas y la salida |
+
+## Los agentes de CI
+
+No son parte del equipo: los dispara GitHub, no una persona, y son la revisión de
+lo que llega de afuera.
+
+| Agente | Workflow | Qué hace | Rol del equipo que cubre |
+|---|---|---|---|
+| `evaluar` y `implementar` | `claude-issues.yml` | diagnostica un issue y, si el error es evidente, lo corrige | `pet-product` y `pet-developer` |
+| `revisar` | `claude-revision.yml` | revisa cada PR y puede bloquear el merge | `pet-security` y `pet-qa` |
+
+Que lean las mismas reglas que el equipo es un PR aparte (`EXECUTION-PLAN.md`,
+B17). Hasta entonces, sus contratos siguen en `docs/reference/claude-issues.md` y
+`docs/reference/claude-revision.md`.
 
 ## Roles diferidos a propósito
 
 | Rol | Por qué no existe todavía | Cuándo crearlo |
 |---|---|---|
-| Producto | el dueño escribe las specs; el contrato spec→tareas no ha rodado ni una feature | después de 2-3 features con spec |
-| Seguridad | la superficie es un socket local, un binario sin red y paquetes de datos sin código ejecutable; `make verify` y una lectura cubren | si un pack pudiera ejecutar algo, o al aceptar packs de desconocidos a volumen |
-| Curador del marketplace | hoy son 2 mascotas y el PR lo revisa el dueño | cuando lleguen PRs de terceros con regularidad |
-| DevOps | un workflow de CI y un `Makefile` alcanzan | si el pipeline pasa de un job |
-| Orquestador | el flujo de control vive en artefactos y en la checklist, no en un agente | probablemente nunca: un orquestador gordo esconde el flujo |
+| Curador del marketplace | hoy son 4 mascotas incluidas y los PRs los revisa el dueño | cuando lleguen PRs de mascotas de terceros con regularidad |
+| DevOps | CI, `Makefile` y `publicar.yml` alcanzan | si el pipeline necesita alguien que lo opere |
+| Orquestador | el flujo vive en los artefactos y en estas tablas | probablemente nunca: un orquestador gordo esconde el flujo |
 
-## Anti-patrones al trabajar con estos agentes
+## Anti-patrones
 
-- **Creerle al checker sin verificar.** Un revisor también alucina. Toda
-  corrección propuesta se comprueba contra el código antes de aplicarla.
-- **Pasarle contexto por el prompt** en vez de dejarlo en disco. Si el agente
-  necesita algo para trabajar, va en un archivo.
-- **Un solo agente que implementa y aprueba.** Es el fallo que la separación
-  maker/checker existe para evitar.
-- **Crear las siete carpetas de feature** porque la plantilla las tiene. Solo las
-  que van a tener contenido.
+- **Creerle a un checker sin verificar.** Un revisor también alucina: toda
+  corrección se comprueba contra el código antes de aplicarla.
+- **Pasar contexto por el prompt** en vez de dejarlo en disco. Si un agente lo
+  necesita para trabajar, va en un archivo de la feature.
+- **Un solo agente que implementa y aprueba.**
+- **Diseñar para cmux y "ver después" los otros clientes.**
+- **Copiar toda la plantilla por simetría.** Solo los archivos que van a tener
+  contenido.
+- **Confiar en que `tools:` limita rutas.** Limita herramientas: que cada agente
+  escriba solo su archivo lo sostiene la instrucción. Si se rompe, el siguiente
+  paso es un hook `PreToolUse` por agente.

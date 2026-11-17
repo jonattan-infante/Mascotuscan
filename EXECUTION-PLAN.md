@@ -34,6 +34,7 @@ En orden de prioridad.
 | # | Cosa | Estado | Próximo paso concreto |
 |---|---|---|---|
 | F2 | Migración de la máquina del autor a MascoTuscan (`docs/adr/0010`) | lista para hacer: `v0.4.0` es el último release desde el 2026-11-16 (`gh release list`) | `lucy update`; confirmar `~/.mascotuscan`, que el zshrc tiene solo el enganche nuevo y que `mascotuscan --version` responde |
+| F9 | Piloto del equipo de agentes: Claude Code nativo en macOS, sin cmux (`docs/adr/0015`) | hueco como hipótesis: `makeEventSources()` registra solo cmux y la shell, y ningún instalador de macOS registra hooks de Claude Code (`PRODUCT.md` §Clientes, 2026-11-16) | `pet-product` escribe `docs/features/FEAT-001-claude-code-nativo-macos/01-spec.md` y Jonattan la aprueba; después sigue el flujo de `AGENTS.md` |
 | F3 | `roam` en Windows (`docs/adr/0014`, límite 20) | en macOS desde #26 y #27; `windows/` no conoce el bloque `roam`, así que allí un pack con `roam` mal formado pasa sin validar (revisión de Claude de #26, corrida 43949845781) | el mismo `roam` en `windows/` con los casos de `RoamTests` y `PetPackTests`, y en las imágenes animadas la duración de cada cuadro y el reinicio al aparecer, que hoy solo hace macOS (`docs/reference/pet-pack.md`) |
 | F4 | Revisor de PRs como check obligatorio (`docs/adr/0012`) | en `main` desde #24; ya corrió en GitHub sobre #25 y #26 (`gh run list -w "claude revisa PRs"`). `claude/revision` no está entre los checks obligatorios | agregarlo en *Settings > Branches* y verificar los cuatro puntos de `docs/reference/claude-revision.md` §Sin verificar todavía |
 | F5 | Responder permiso/pregunta desde la burbuja: prueba real (`docs/adr/0009`) | código y botones en `main` (#15, #16); probado contra el RPC, no contra un permiso real ⚠️ 2026-09-27 | en un workspace descartable, provocar un permiso, hacer clic en la burbuja y confirmar en el pane que el agente siguió con esa respuesta |
@@ -124,6 +125,7 @@ Ordenado por valor sobre esfuerzo. El valor es una estimación; lo ajusta el due
 | B1 | Sonido opcional por estado | un aviso visual en la esquina se pierde si miras otra pantalla | medio | bajo |
 | B13 | Marcar el job `port de Windows` como check obligatorio en `main` | hoy un PR puede romper Windows y entrar igual | medio | bajo |
 | B14 | Registrar como *signing key* la llave del autor y la de CI | hoy los tags se ven "Unverified" en GitHub; siguen firmados | bajo | bajo |
+| B17 | Alinear los agentes de CI con el equipo (`docs/adr/0015`): que `evaluar`, `implementar` y `revisar` lean las reglas de `pet-product`, `pet-developer`, `pet-security` y `pet-qa` | hoy cada lado tiene sus propias reglas y pueden divergir. Toca los dos harness y sus 106 tests, por eso va aparte | medio | medio |
 | B11 | Página del marketplace con capturas de cada mascota | el índice JSON no deja ver cómo se ven; una galería sí | medio | medio |
 | B10 | Más dibujos integrados (`vector:gato`, `vector:blob`) | hoy un pack sin arte solo puede verse como droide, esfera o figura encapuchada | medio | medio |
 | B5 | Soporte de otros shells (bash, fish) | hoy solo zsh; bash necesita `trap DEBUG` + `PROMPT_COMMAND` | medio | medio |

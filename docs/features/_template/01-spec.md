@@ -1,37 +1,52 @@
 # FEAT-XXX — <título>
 
-> Plantilla. Copiar la carpeta a `docs/features/FEAT-XXX/` y crear **solo** los
-> archivos que van a tener contenido. Carpetas vacías por simetría son deuda.
+> La escribe `pet-product`. Máximo 60 líneas. Copiar a `docs/features/FEAT-XXX/`
+> solo los archivos de la plantilla que esta feature va a usar.
+
+- Estado: `borrador` / `aprobada` / `aceptada`
 
 ## Problema
 
-Qué le pasa hoy al usuario. En términos de lo que ve, no de lo que falta en el
+Qué le pasa hoy al usuario, en términos de lo que ve, no de lo que falta en el
 código.
 
 ## Fuera de alcance
 
-Lo que explícitamente no se hace en esta feature. Esta sección evita que crezca
-sola.
+Lo que explícitamente no se hace. Esta sección evita que la feature crezca sola.
+
+## Toca
+
+- [ ] vista o texto: `pet-ux` escribe `02-ux.md`
+- [ ] frontera (lista en `AGENTS.md`): `pet-security` escribe `03-seguridad.md`
+
+## Fuentes
+
+- [ ] todas: cambia el orquestador; un caso usa al menos dos `source` distintos
+- [ ] cmux · [ ] hooks de Claude Code · [ ] shell · [ ] OpenCode · [ ] otra:
+
+Si aplica a una sola, por qué.
 
 ## Casos verificables
 
-Cada caso tiene que poder fallar. Si no se puede escribir cómo comprobarlo, no es
-un caso: es un deseo.
+Cada caso tiene que poder fallar. Los casos de seguridad (S1, S2...) están en
+`03-seguridad.md`.
 
 | # | Dado | Cuando | Entonces | Cómo se comprueba |
 |---|---|---|---|---|
-| 1 | | | | `swift test` / `make render` / comando concreto |
-| 2 | | | | |
+| C1 | | | | test o comando concreto |
 
-## Terminado cuando
+## Preguntas abiertas para Jonattan
 
-- [ ] Todos los casos verificables pasan
-- [ ] `make verify` verde
-- [ ] Si es visual: `make render` revisado a ojo, con la imagen que lo demuestra
-- [ ] `EXECUTION-PLAN.md` actualizado con evidencia
-- [ ] `claude-progress.md` actualizado
+## Aprobación
 
-## Notas
+Sin esta firma no empieza nadie.
 
-Decisiones tomadas al vuelo. Si alguna es durable, va a un ADR en `docs/adr/`, no
-se queda aquí.
+- Aprobada por Jonattan el:
+
+## Aceptación
+
+La llena `pet-product` cuando `05-qa.md` dice `aprobado` y seguridad no bloquea.
+
+| Caso | Evidencia en `05-qa.md` | ¿Cumple? |
+|---|---|---|
+| C1 | | sí / no |
